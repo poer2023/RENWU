@@ -1,0 +1,57 @@
+{
+  "metadata": {
+    "exported_at": "2025-06-19T05:13:38.589453",
+    "version": "1.0",
+    "app": "TaskWall"
+  },
+  "tasks": [
+    {
+      "id": 1,
+      "title": "测试任务",
+      "description": "",
+      "urgency": 2,
+      "module_id": null,
+      "parent_id": null,
+      "created_at": "2025-06-19T03:34:44.857721",
+      "updated_at": "2025-06-19T03:34:44.857734",
+      "ocr_src": null
+    },
+    {
+      "id": 2,
+      "title": "Design UI",
+      "description": "Create task card design",
+      "urgency": 1,
+      "module_id": null,
+      "parent_id": null,
+      "created_at": "2025-06-19T04:12:06.015771",
+      "updated_at": "2025-06-19T04:12:06.015805",
+      "ocr_src": null
+    },
+    {
+      "id": 3,
+      "title": "Implement Backend",
+      "description": "Add API endpoints",
+      "urgency": 2,
+      "module_id": null,
+      "parent_id": null,
+      "created_at": "2025-06-19T04:12:10.174421",
+      "updated_at": "2025-06-19T04:12:10.174430",
+      "ocr_src": null
+    }
+  ],
+  "modules": [
+    {
+      "id": 1,
+      "name": "General",
+      "color": "#FFE58F"
+    }
+  ],
+  "dependencies": [
+    {
+      "id": 1,
+      "from_task_id": 2,
+      "to_task_id": 3,
+      "created_at": "2025-06-19T04:14:14.530118"
+    }
+  ]
+}

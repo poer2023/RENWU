@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug TaskWall</title>
+</head>
+<body>
+    <h1>Debug TaskWall API</h1>
+    
+    <div id="debug-output"></div>
+    
+    <script>
+        async function debugAPI() {
+            const output = document.getElementById('debug-output');
+            
+            try {
+                // Test health
+                const healthResponse = await fetch('/api/health');
+                const healthData = await healthResponse.json();
+                output.innerHTML += '<p>✅ Health: ' + JSON.stringify(healthData) + '</p>';
+                
+                // Test tasks
+                const tasksResponse = await fetch('/api/tasks/');
+                const tasksData = await tasksResponse.json();
+                output.innerHTML += '<p>✅ Tasks count: ' + tasksData.length + '</p>';
+                output.innerHTML += '<p>📋 Tasks data: ' + JSON.stringify(tasksData.slice(0, 2)) + '</p>';
+                
+                // Test modules
+                const modulesResponse = await fetch('/api/modules/');
+                const modulesData = await modulesResponse.json();
+                output.innerHTML += '<p>✅ Modules: ' + JSON.stringify(modulesData) + '</p>';
+                
+                // Test dependencies
+                const depsResponse = await fetch('/api/dependencies/');
+                const depsData = await depsResponse.json();
+                output.innerHTML += '<p>✅ Dependencies: ' + JSON.stringify(depsData) + '</p>';
+                
+            } catch (error) {
+                output.innerHTML += '<p>❌ Error: ' + error.message + '</p>';
+            }
+        }
+        
+        debugAPI();
+    </script>
+</body>
+</html>
