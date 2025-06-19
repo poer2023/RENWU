@@ -1,14 +1,45 @@
 import os
 import json
-from typing import Dict, List, Optional
+import time
+import re
+from typing import Dict, List, Optional, Tuple
 import google.generativeai as genai
+import requests
+from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 class AIClient:
-    def __init__(self):
+    def __init__(self, db_session=None):
+        self.db_session = db_session
+        self.api_key = None
+        self.model_name = "gemini-2.5-flash"  # Use the user-specified model
+        self.model = None
+        self._initialize_client()
+    
+    def _initialize_client(self):
+        # 首先尝试从环境变量获取
         self.api_key = os.getenv("GEMINI_API_KEY")
-        if self.api_key:
+        
+        # 如果没有环境变量且有数据库连接，从数据库获取
+        if not self.api_key and self.db_session:
+            try:
+                from ..crud import SettingCRUD
+                setting_key = SettingCRUD.read(self.db_session, "gemini_api_key")
+                if setting_key:
+                    self.api_key = setting_key.value
+                
+                setting_model = SettingCRUD.read(self.db_session, "gemini_model_name")
+                if setting_model:
+                    self.model_name = setting_model.value
+            except Exception as e:
+                print(f"Error reading settings from DB: {e}")
+                pass
+        
+        if self.api_key and self.api_key != "your_test_api_key_here":
             genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel('gemini-pro')
+            self.model = genai.GenerativeModel(self.model_name)
         else:
             self.model = None
 
@@ -262,93 +293,195 @@ class AIClient:
         else:
             return content
 
-    def generate_subtasks(self, parent_title: str, parent_description: str, max_subtasks: int = 5) -> List[Dict]:
+    def generate_subtasks_advanced(
+        self, 
+        parent_title: str, 
+        parent_description: str, 
+        max_subtasks: int = 5
+    ) -> Tuple[Optional[List[Dict]], Dict]:
         """
-        Generate subtasks for a parent task
+        Generates subtasks for a given parent task using an advanced prompt.
+        Handles API errors, parsing, and includes metadata.
         """
         if not self.model:
-            return self._fallback_generate_subtasks(parent_title, parent_description, max_subtasks)
+            print("AI model not initialized. Using fallback.")
+            fallback_metadata = {
+                "model_used": "fallback",
+                "tokens_in": 0,
+                "tokens_out": 0,
+                "cost": 0.0,
+                "error_message": "AI model not initialized"
+            }
+            return self._fallback_generate_subtasks(parent_title, parent_description, max_subtasks), fallback_metadata
+
+        system_prompt = f"""
+        You are an expert project manager. Your task is to break down a parent task into a list of actionable subtasks.
+        - The parent task is titled: "{parent_title}"
+        - Description: "{parent_description}"
+        - Generate no more than {max_subtasks} subtasks.
+        - Each subtask must have a 'title' (string, concise) and a 'description' (string, detailed).
+        - You MUST return the output as a single, valid JSON array of objects. Do not include any other text, comments, or markdown formatting like ```json.
+        - Ensure the subtasks are logical, sequential if necessary, and clearly contribute to completing the parent task.
+
+        Example of a valid JSON output:
+        [
+            {{"title": "Subtask 1 Title", "description": "Detailed description for subtask 1."}},
+            {{"title": "Subtask 2 Title", "description": "Detailed description for subtask 2."}}
+        ]
+        """
+        
+        generation_config = {
+            "temperature": 0.4,
+            "top_p": 0.9,
+            "response_mime_type": "application/json",
+        }
+
+        metadata = {
+            "model_used": self.model_name,
+            "tokens_in": 0,
+            "tokens_out": 0,
+            "total_tokens": 0,
+            "cost": 0.0,
+            "latency_ms": 0,
+            "success": False,
+            "error_message": None,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+        start_time = time.time()
         
         try:
-            prompt = f"""
-            Generate {max_subtasks} subtasks for the following parent task:
+            # The google-generativeai library v0.5+ automatically counts tokens if you have `google-auth` installed.
+            # However, explicit counting gives more control and visibility.
+            prompt_tokens = self.model.count_tokens(system_prompt).total_tokens
+
+            response = self.model.generate_content(
+                system_prompt,
+                generation_config=generation_config
+            )
             
-            Title: {parent_title}
-            Description: {parent_description}
+            end_time = time.time()
+            metadata["latency_ms"] = int((end_time - start_time) * 1000)
             
-            Each subtask should be:
-            - Specific and actionable
-            - Estimated to take 1-4 hours
-            - Contribute to completing the parent task
+            # Extract token usage from response if available (some models/versions provide this)
+            # As of early 2024, usage_metadata is the way to get this.
+            if hasattr(response, 'usage_metadata'):
+                 metadata["tokens_in"] = response.usage_metadata.prompt_token_count
+                 metadata["tokens_out"] = response.usage_metadata.candidates_token_count
+                 metadata["total_tokens"] = response.usage_metadata.total_token_count
+            else:
+                # Fallback to counting manually if not in response
+                metadata["tokens_in"] = prompt_tokens
+                completion_tokens = self.model.count_tokens(response.text).total_tokens
+                metadata["tokens_out"] = completion_tokens
+                metadata["total_tokens"] = prompt_tokens + completion_tokens
+
+            # Cost calculation based on model
+            cost = self._calculate_cost(metadata["tokens_in"], metadata["tokens_out"], metadata["model_used"])
+            metadata["cost"] = cost
+
+            # Clean the response text before parsing
+            cleaned_text = response.text.strip()
             
-            Return ONLY a valid JSON array of subtask objects with these fields:
-            - title: Short, actionable title
-            - description: Detailed description
-            - urgency: Priority level 0-4 (inherit from parent or adjust based on criticality)
+            # Sometimes the model still wraps the JSON in markdown
+            if cleaned_text.startswith("```json"):
+                cleaned_text = re.sub(r"```json\s*|\s*```", "", cleaned_text, flags=re.DOTALL)
+
+            parsed_subtasks = json.loads(cleaned_text)
             
-            Example output:
-            [
-              {{
-                "title": "Research requirements",
-                "description": "Gather and analyze all requirements for the task",
-                "urgency": 2
-              }},
-              {{
-                "title": "Create implementation plan",
-                "description": "Develop step-by-step implementation approach",
-                "urgency": 2
-              }}
-            ]
-            """
-            
-            response = self.model.generate_content(prompt)
-            
-            try:
-                subtasks = json.loads(response.text.strip())
-                if isinstance(subtasks, list):
-                    return subtasks[:max_subtasks]  # Limit to max_subtasks
-                else:
-                    return [subtasks] if isinstance(subtasks, dict) else []
-            except json.JSONDecodeError:
-                return self._fallback_generate_subtasks(parent_title, parent_description, max_subtasks)
-            
+            if not isinstance(parsed_subtasks, list):
+                raise json.JSONDecodeError("Response is not a JSON array.", cleaned_text, 0)
+
+            # Validate and truncate if necessary
+            if len(parsed_subtasks) > max_subtasks:
+                parsed_subtasks = parsed_subtasks[:max_subtasks]
+
+            for task in parsed_subtasks:
+                if not isinstance(task, dict) or "title" not in task or "description" not in task:
+                    raise TypeError("Subtask object is missing required 'title' or 'description' fields.")
+
+            metadata["success"] = True
+            return parsed_subtasks, metadata
+
+        except (json.JSONDecodeError, TypeError) as e:
+            metadata["success"] = False
+            metadata["error_message"] = f"Parsing Error: {str(e)}. Response text: {response.text if 'response' in locals() else 'N/A'}"
+            print(metadata["error_message"])
+            return self._fallback_generate_subtasks(parent_title, parent_description, max_subtasks), metadata
         except Exception as e:
-            print(f"Subtask generation failed: {e}")
-            return self._fallback_generate_subtasks(parent_title, parent_description, max_subtasks)
-    
+            # Handle specific API errors based on PRD
+            error_message = str(e)
+            metadata["success"] = False
+            if "API_KEY_INVALID" in error_message or "401" in error_message or "403" in error_message:
+                metadata["error_message"] = "API Key is invalid or expired."
+            elif "429" in error_message:
+                metadata["error_message"] = "Rate limit exceeded. Please try again later."
+            elif "400" in error_message:
+                 metadata["error_message"] = f"Bad request (400): {error_message}"
+            else:
+                metadata["error_message"] = f"An unexpected API error occurred: {error_message}"
+            
+            print(metadata["error_message"])
+            return self._fallback_generate_subtasks(parent_title, parent_description, max_subtasks), metadata
+
+    def _calculate_cost(self, prompt_tokens, completion_tokens, model_name):
+        # Pricing based on https://ai.google.dev/gemini-api/docs/pricing
+        # Prices per 1 million tokens in USD
+        pricing = {
+            "gemini-1.5-flash-latest": {"input": 0.15, "output": 0.60},
+            "gemini-pro": {"input": 0.50, "output": 1.50}, # Example pricing
+            "gemini-2.5-flash": {"input": 0.30, "output": 2.50},
+        }
+        
+        model_pricing = pricing.get(model_name)
+        if not model_pricing:
+            # Fallback for unknown models to avoid errors, though cost will be 0
+            logger.warning(f"No pricing information for model: {model_name}. Cost will be reported as 0.")
+            return 0.0
+
+        input_cost = (prompt_tokens / 1_000_000) * model_pricing["input"]
+        output_cost = (completion_tokens / 1_000_000) * model_pricing["output"]
+        
+        return input_cost + output_cost
+
     def _fallback_generate_subtasks(self, parent_title: str, parent_description: str, max_subtasks: int = 5) -> List[Dict]:
         """
-        Fallback subtask generation when AI is not available
+        A simple fallback to generate subtasks based on keywords if the AI call fails.
         """
-        base_subtasks = [
-            {
-                "title": f"Plan: {parent_title}",
-                "description": f"Create detailed plan for: {parent_description or parent_title}",
-                "urgency": 2
-            },
-            {
-                "title": f"Research: {parent_title}",
-                "description": f"Research and gather information for: {parent_title}",
-                "urgency": 2
-            },
-            {
-                "title": f"Implement: {parent_title}",
-                "description": f"Execute the main work for: {parent_title}",
-                "urgency": 2
-            },
-            {
-                "title": f"Review: {parent_title}",
-                "description": f"Review and validate completion of: {parent_title}",
-                "urgency": 3
-            },
-            {
-                "title": f"Document: {parent_title}",
-                "description": f"Document the process and results for: {parent_title}",
-                "urgency": 3
-            }
-        ]
+        logger.info(f"Using fallback to generate subtasks for: {parent_title}")
+        # Basic parsing based on common verbs and nouns
+        text_to_parse = f"{parent_title} {parent_description}"
         
-        return base_subtasks[:max_subtasks]
+        # A bit more sophisticated split
+        sentences = re.split(r'[.!?。！？]\s+', text_to_parse)
+        
+        potential_tasks = []
+        for sentence in sentences:
+            if len(sentence) > 5:
+                 potential_tasks.append(sentence)
+
+        # If splitting by sentence gives nothing, split by comma or space
+        if not potential_tasks:
+            potential_tasks = re.split(r'[,，、]\s*', text_to_parse)
+        
+        if len(potential_tasks) < 2:
+             potential_tasks = text_to_parse.split()
+
+        subtasks = []
+        for i, task_title in enumerate(potential_tasks):
+            if i < max_subtasks and task_title.strip():
+                subtasks.append({
+                    "title": task_title.strip(),
+                    "description": f"This is a fallback-generated subtask for '{parent_title}'."
+                })
+        
+        if not subtasks:
+             return [{
+                "title": f"Complete '{parent_title}'",
+                "description": "Fallback task."
+            }]
+            
+        return subtasks
 
     def generate_weekly_report(self, tasks_data: List[Dict], start_date: str, end_date: str) -> str:
         """
@@ -874,16 +1007,22 @@ def assistant_command(command: str, content: str, context: Optional[str] = None)
     """
     return ai_client.execute_assistant_command(command, content, context)
 
-def generate_subtasks(parent_title: str, parent_description: str, max_subtasks: int = 5) -> List[Dict]:
+def generate_subtasks(parent_title: str, parent_description: str, max_subtasks: int = 5) -> Tuple[Optional[List[Dict]], Dict]:
     """
-    Generate subtasks for a parent task
+    Standalone function to generate subtasks.
     """
-    return ai_client.generate_subtasks(parent_title, parent_description, max_subtasks)
+    # Note: This creates a new client for each call. For performance, a shared client is better.
+    # In a real FastAPI app, you'd use a dependency injection system for the session.
+    ai_client = AIClient()
+    return ai_client.generate_subtasks_advanced(parent_title, parent_description, max_subtasks)
 
 def generate_weekly_report(tasks_data: List[Dict], start_date: str, end_date: str) -> str:
     """
-    Generate a weekly report from tasks data
+    Standalone function to generate a weekly report.
     """
+    # Note: This creates a new client for each call. For performance, a shared client is better.
+    # In a real FastAPI app, you'd use a dependency injection system for the session.
+    ai_client = AIClient()
     return ai_client.generate_weekly_report(tasks_data, start_date, end_date)
 
 def find_similar_tasks(new_task_title: str, new_task_description: str, existing_tasks: List[Dict], threshold: float = 0.85) -> List[Dict]:
@@ -896,10 +1035,12 @@ def analyze_task_risks(tasks: List[Dict]) -> Dict:
     """
     Analyze tasks for risks and emotional indicators
     """
+    ai_client = AIClient()
     return ai_client.analyze_task_risks(tasks)
 
 def create_theme_islands(tasks: List[Dict]) -> Dict:
     """
     Create theme islands by clustering similar tasks
     """
+    ai_client = AIClient()
     return ai_client.create_theme_islands(tasks)

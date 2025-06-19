@@ -1,13 +1,15 @@
+import os
+from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import SQLModel, Session
-from typing import List
+from typing import List, Optional
 
 from .deps import engine, get_db
-from .models import Task, Module, History, Setting, TaskDependency
-from .crud import TaskCRUD, ModuleCRUD, HistoryCRUD, SettingCRUD, TaskDependencyCRUD
+from .models import Task, Module, History, Setting, TaskDependency, AILog
+from .crud import TaskCRUD, ModuleCRUD, HistoryCRUD, SettingCRUD, TaskDependencyCRUD, AILogCRUD
 from .schemas import (
     TaskCreate, TaskRead, TaskUpdate,
     ModuleCreate, ModuleRead,
@@ -21,12 +23,17 @@ from .schemas import (
     SimilarTaskRequest, SimilarTaskResponse,
     RiskAnalysisRequest, RiskAnalysisResponse,
     ThemeIslandRequest, ThemeIslandResponse,
-    TaskDependencyCreate, TaskDependencyRead
+    TaskDependencyCreate, TaskDependencyRead,
+    AISubtaskGenerationRequest, AISubtaskGenerationResponse,
+    SubtaskConfirmationRequest, SubtaskSuggestion, AILogRead
 )
 from .utils.ocr import extract_text
 from .utils.ai_client import ask, assistant_command, generate_subtasks, generate_weekly_report, find_similar_tasks, analyze_task_risks, create_theme_islands
 from .utils.export import ExportService
 from .utils.backup import backup_service
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Create database tables
 SQLModel.metadata.create_all(engine)
@@ -153,6 +160,34 @@ async def read_setting(key: str, db: Session = Depends(get_db)):
 async def create_or_update_setting(key: str, value: str, db: Session = Depends(get_db)):
     return SettingCRUD.create_or_update(db, key, value)
 
+@app.post("/ai/test")
+async def test_gemini_api(db: Session = Depends(get_db)):
+    """测试Gemini API连接状态"""
+    from .utils.ai_client import AIClient
+    ai_client = AIClient(db_session=db)
+    
+    result = {
+        "api_key_configured": bool(ai_client.api_key),
+        "api_key_source": "database" if ai_client.api_key and not os.getenv("GEMINI_API_KEY") else "environment",
+        "model_available": bool(ai_client.model),
+        "api_key_preview": ai_client.api_key[:10] + "..." if ai_client.api_key else None
+    }
+    
+    if ai_client.model:
+        try:
+            # 简单的测试请求
+            response = ai_client.model.generate_content("Hello, respond with 'API Working!'")
+            result["test_response"] = response.text if response else "No response"
+            result["api_working"] = True
+        except Exception as e:
+            result["test_response"] = f"Error: {str(e)}"
+            result["api_working"] = False
+    else:
+        result["api_working"] = False
+        result["test_response"] = "No model configured"
+    
+    return result
+
 # OCR endpoint
 @app.post("/ocr/")
 async def ocr_image(file: UploadFile = File(...)):
@@ -190,19 +225,44 @@ async def ai_assistant(request: AIAssistantRequest):
 
 # AI subtask generation endpoint
 @app.post("/ai/subtasks", response_model=AISubtaskResponse)
-async def ai_generate_subtasks(request: AISubtaskRequest):
+async def ai_generate_subtasks(request: AISubtaskRequest, db: Session = Depends(get_db)):
     try:
-        subtasks = generate_subtasks(
+        # The function now returns a tuple (subtasks, metadata)
+        subtasks, metadata = generate_subtasks(
             request.parent_task_title, 
             request.parent_task_description, 
             request.max_subtasks
         )
-        return AISubtaskResponse(subtasks=subtasks, success=True)
+
+        # Log the AI interaction
+        log_entry = AILog(
+            task_id=None,  # This is a generic call, not tied to a specific task yet
+            model=metadata.get("model", "unknown"),
+            operation="generate_subtasks",
+            tokens_in=metadata.get("prompt_tokens", 0),
+            tokens_out=metadata.get("completion_tokens", 0),
+            cost=metadata.get("cost", 0.0),
+            accepted=None,  # Not known at this stage
+            error_message=metadata.get("error_message")
+        )
+        AILogCRUD.create(db, log_entry)
+        db.commit()
+
+
+        if metadata.get("success", False) and subtasks is not None:
+            return AISubtaskResponse(subtasks=subtasks, success=True)
+        else:
+            return AISubtaskResponse(
+                subtasks=[],
+                success=False,
+                error=metadata.get("error_message", "Subtask generation failed for an unknown reason.")
+            )
+            
     except Exception as e:
         return AISubtaskResponse(
             subtasks=[],
             success=False,
-            error=f"Subtask generation failed: {str(e)}"
+            error=f"An unexpected error occurred in the endpoint: {str(e)}"
         )
 
 # Weekly report generation endpoint
@@ -543,3 +603,166 @@ def configure_backup(interval_hours: int, db: Session = Depends(get_db)):
     backup_service.start_scheduler(interval_hours)
     
     return {"message": f"Backup interval set to {interval_hours} hours"}
+
+# 按PRD规范的AI子任务生成端点
+@app.post("/ai/subtasks/generate", response_model=AISubtaskGenerationResponse)
+async def generate_subtasks_endpoint(request: AISubtaskGenerationRequest, db: Session = Depends(get_db)):
+    """
+    按PRD规范生成子任务建议
+    """
+    try:
+        # 验证父任务存在
+        parent_task = TaskCRUD.read(db, request.parent_task_id)
+        if not parent_task:
+            raise HTTPException(status_code=404, detail="Parent task not found")
+        
+        # 检查是否已存在子任务
+        from sqlmodel import select
+        existing_subtasks = db.exec(
+            select(Task).where(Task.parent_id == request.parent_task_id)
+        ).all()
+        
+        if existing_subtasks and not request.auto_accept:
+            raise HTTPException(
+                status_code=409, 
+                detail=f"Task already has {len(existing_subtasks)} subtasks. Set auto_accept=true to override."
+            )
+        
+        # 调用AI服务生成子任务
+        from .utils.ai_client import AIClient
+        ai_client = AIClient(db_session=db)
+        subtasks, metadata = ai_client.generate_subtasks_advanced(
+            request.parent_task_title,
+            request.parent_task_description,
+            request.max_subtasks
+        )
+        
+        # 创建AI日志记录
+        ai_log = AILog(
+            task_id=request.parent_task_id,
+            model=metadata["model_used"],
+            operation="subtask_generation",
+            tokens_in=metadata["tokens_in"],
+            tokens_out=metadata["tokens_out"],
+            cost=metadata["cost"],
+            error_message=metadata["error_message"]
+        )
+        ai_log = AILogCRUD.create(db, ai_log)
+        
+        # 转换为响应格式
+        suggestions = []
+        for subtask in subtasks:
+            suggestions.append(SubtaskSuggestion(
+                title=subtask["title"],
+                description=subtask["description"],
+                order=subtask.get("order", 1),
+                urgency=subtask.get("urgency", 2)
+            ))
+        
+        return AISubtaskGenerationResponse(
+            suggestions=suggestions,
+            model_used=metadata["model_used"],
+            tokens_in=metadata["tokens_in"],
+            tokens_out=metadata["tokens_out"],
+            cost=metadata["cost"],
+            log_id=ai_log.id,
+            success=True,
+            error=metadata["error_message"]
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        # 记录失败日志
+        ai_log = AILog(
+            task_id=request.parent_task_id,
+            model="error",
+            operation="subtask_generation",
+            error_message=str(e)
+        )
+        ai_log = AILogCRUD.create(db, ai_log)
+        
+        raise HTTPException(status_code=500, detail=f"Subtask generation failed: {str(e)}")
+
+@app.post("/ai/subtasks/confirm")
+async def confirm_subtasks_endpoint(request: SubtaskConfirmationRequest, db: Session = Depends(get_db)):
+    """
+    用户确认子任务建议，创建实际的子任务
+    """
+    try:
+        # 更新AI日志的接受状态
+        ai_log = AILogCRUD.update_acceptance(db, request.log_id, request.accepted)
+        if not ai_log:
+            raise HTTPException(status_code=404, detail="AI log not found")
+        
+        if not request.accepted:
+            return {"message": "Subtasks rejected", "created_count": 0}
+        
+        # 获取父任务
+        parent_task = TaskCRUD.read(db, ai_log.task_id)
+        if not parent_task:
+            raise HTTPException(status_code=404, detail="Parent task not found")
+        
+        created_tasks = []
+        
+        # 创建确认的子任务
+        for suggestion in request.accepted_suggestions:
+            subtask = Task(
+                title=suggestion.title,
+                description=suggestion.description,
+                urgency=suggestion.urgency,
+                parent_id=parent_task.id,
+                module_id=parent_task.module_id  # 继承父任务的模块
+            )
+            created_task = TaskCRUD.create(db, subtask)
+            created_tasks.append(created_task)
+            
+            # 创建依赖关系（子任务依赖父任务）
+            if created_task.id and parent_task.id:
+                dependency = TaskDependency(
+                    from_task_id=parent_task.id,
+                    to_task_id=created_task.id
+                )
+                TaskDependencyCRUD.create(db, dependency)
+        
+        return {
+            "message": f"Successfully created {len(created_tasks)} subtasks",
+            "created_count": len(created_tasks),
+            "subtask_ids": [task.id for task in created_tasks]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Subtask confirmation failed: {str(e)}")
+
+# AI使用指标端点
+@app.get("/ai/metrics")
+async def get_ai_metrics(days: int = 7, db: Session = Depends(get_db)):
+    """
+    获取AI功能使用指标
+    """
+    try:
+        metrics = AILogCRUD.get_metrics(db, days)
+        return metrics
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get metrics: {str(e)}")
+
+# AI日志查询端点
+@app.get("/ai/logs", response_model=List[AILogRead])
+async def get_ai_logs(
+    skip: int = 0, 
+    limit: int = 50, 
+    task_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    查询AI使用日志
+    """
+    try:
+        if task_id:
+            return AILogCRUD.read_by_task(db, task_id)
+        else:
+            return AILogCRUD.read_all(db, skip, limit)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get logs: {str(e)}")

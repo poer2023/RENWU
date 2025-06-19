@@ -19,6 +19,7 @@
           @input="handleSearch"
           @keydown.enter="selectFirstResult"
           @keydown.escape="clearSearch"
+          @focus="showGlobalSearch = true"
           ref="searchInput"
         >
           <template #prefix>
@@ -317,6 +318,26 @@
       </template>
     </el-dialog>
 
+    <!-- Global Search Modal -->
+    <GlobalSearch 
+      :visible="showGlobalSearch"
+      @close="showGlobalSearch = false"
+    />
+
+    <!-- Similar Tasks Dialog -->
+    <SimilarTaskDialog
+      v-model:visible="showSimilarTasksDialog"
+      :new-task-title="pendingTask?.title || ''"
+      :new-task-description="pendingTask?.description || ''"
+      :similar-tasks="similarTasksData?.similar_tasks || []"
+      :suggestions="similarTasksData?.suggestions || []"
+      @cancel="handleSimilarTaskCancel"
+      @ignore="handleSimilarTaskIgnore"
+      @create="handleSimilarTaskCreate"
+      @view-task="handleViewSimilarTask"
+      @link-tasks="handleLinkSimilarTask"
+    />
+
     <!-- Settings Dialog -->
     <el-dialog v-model="showSettings" title="设置" width="600px">
       <el-tabs>
@@ -382,19 +403,7 @@
       </template>
     </el-dialog>
 
-    <!-- Similar Tasks Dialog -->
-    <SimilarTaskDialog
-      v-model:visible="showSimilarTasksDialog"
-      :new-task-title="pendingTask?.title || ''"
-      :new-task-description="pendingTask?.description || ''"
-      :similar-tasks="similarTasksData?.similar_tasks || []"
-      :suggestions="similarTasksData?.suggestions || []"
-      @cancel="handleSimilarTasksCancel"
-      @ignore="handleSimilarTasksIgnore"
-      @create="handleSimilarTasksCreate"
-      @view-task="handleViewSimilarTask"
-      @link-tasks="handleLinkSimilarTask"
-    />
+
   </div>
 </template>
 
@@ -408,12 +417,23 @@ import DebugTaskList from '@/components/DebugTaskList.vue'
 import WorkloadSidebar from '@/components/WorkloadSidebar.vue'
 import SimilarTaskDialog from '@/components/SimilarTaskDialog.vue'
 import RiskRadar from '@/components/RiskRadar.vue'
+import GlobalSearch from '@/components/GlobalSearch.vue'
 import { useTaskStore, type Task } from '@/stores/tasks'
 import { useSettingsStore } from '@/stores/settings'
 import { useKeyboard } from '@/composables/useKeyboard'
+import { useSimilarityDetection } from '@/composables/useSimilarityDetection'
 
 const taskStore = useTaskStore()
 const settingsStore = useSettingsStore()
+const { findSimilarTasks } = useSimilarityDetection()
+
+// 键盘快捷键
+useKeyboard({
+  onQuickAdd: () => showQuickAdd.value = true,
+  onExport: exportTasks,
+  onSearch: focusSearch,
+  onGlobalSearch: () => showGlobalSearch.value = true
+})
 
 // State
 const selectedTask = ref<Task | null>(null)
@@ -424,11 +444,13 @@ const popupPosition = ref({ x: 0, y: 0 })
 const showQuickAdd = ref(false)
 const showNewModule = ref(false)
 const showSettings = ref(false)
+const showAutoArrangeDialog = ref(false)
 const quickText = ref('')
 const taskInbox = ref<Partial<Task>[]>([])
 const searchQuery = ref('')
 const searchResults = ref<Task[]>([])
 const searchInput = ref()
+const showGlobalSearch = ref(false)
 const showSimilarTasksDialog = ref(false)
 const similarTasksData = ref<any>(null)
 const pendingTask = ref<Partial<Task> | null>(null)
@@ -447,8 +469,6 @@ const newModule = ref({
   name: '',
   color: '#FFE58F'
 })
-
-const showAutoArrangeDialog = ref(false)
 
 // Methods
 function handleTaskSelect(task: Task | null) {
@@ -572,13 +592,13 @@ async function createQuickTask() {
 }
 
 // Similar tasks dialog handlers
-function handleSimilarTasksCancel() {
+function handleSimilarTaskCancel() {
   showSimilarTasksDialog.value = false
   pendingTask.value = null
   similarTasksData.value = null
 }
 
-function handleSimilarTasksIgnore() {
+function handleSimilarTaskIgnore() {
   showSimilarTasksDialog.value = false
   if (pendingTask.value) {
     finalizeTaskCreation(pendingTask.value)
@@ -587,7 +607,7 @@ function handleSimilarTasksIgnore() {
   similarTasksData.value = null
 }
 
-function handleSimilarTasksCreate() {
+function handleSimilarTaskCreate() {
   showSimilarTasksDialog.value = false
   if (pendingTask.value) {
     finalizeTaskCreation(pendingTask.value)
@@ -875,44 +895,9 @@ async function exportTasks() {
   }
 }
 
-// Setup keyboard shortcuts
-useKeyboard([
-  {
-    shortcut: 'quickAdd',
-    action: () => { showQuickAdd.value = true },
-    description: '打开快速添加对话框'
-  },
-  {
-    shortcut: 'export',
-    action: () => exportTasks(),
-    description: '导出任务数据'
-  },
-  {
-    shortcut: 'autoArrange',
-    action: () => triggerAutoArrange(),
-    description: '自动排列任务'
-  },
-  {
-    shortcut: 'settings',
-    action: () => { showSettings.value = true },
-    description: '打开设置对话框'
-  },
-  {
-    shortcut: 'newModule',
-    action: () => { showNewModule.value = true },
-    description: '创建新模块'
-  },
-  {
-    shortcut: 'toggleSidebar',
-    action: () => settingsStore.toggleSidebar(),
-    description: '切换侧边栏显示'
-  },
-  {
-    shortcut: 'search',
-    action: () => focusSearch(),
-    description: '全局搜索任务'
-  }
-])
+
+
+// Keyboard shortcuts are handled by useKeyboard composable above
 
 onMounted(async () => {
   console.log('Home: Starting to fetch data...')

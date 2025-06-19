@@ -158,3 +158,47 @@ class TaskDependencyRead(TaskDependencyBase):
 
     class Config:
         from_attributes = True
+
+# AI子任务生成相关
+class SubtaskSuggestion(BaseModel):
+    title: str
+    description: str
+    order: int
+    urgency: Optional[int] = 2
+
+class AISubtaskGenerationRequest(BaseModel):
+    parent_task_id: int
+    parent_task_title: str
+    parent_task_description: str = ""
+    max_subtasks: int = 5
+    auto_accept: bool = False  # 用户偏好：是否自动接受
+
+class AISubtaskGenerationResponse(BaseModel):
+    suggestions: List[SubtaskSuggestion]
+    model_used: str
+    tokens_in: int = 0
+    tokens_out: int = 0
+    cost: float = 0.0
+    log_id: int
+    success: bool = True
+    error: Optional[str] = None
+
+class SubtaskConfirmationRequest(BaseModel):
+    log_id: int
+    accepted_suggestions: List[SubtaskSuggestion]  # 用户确认的子任务
+    accepted: bool  # 整体是否接受
+
+class AILogRead(BaseModel):
+    id: int
+    task_id: Optional[int]
+    model: str
+    operation: str
+    tokens_in: int
+    tokens_out: int
+    cost: float
+    accepted: Optional[bool]
+    created_at: datetime
+    error_message: Optional[str]
+
+    class Config:
+        from_attributes = True

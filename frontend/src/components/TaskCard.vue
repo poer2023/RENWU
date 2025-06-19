@@ -75,7 +75,23 @@
     <!-- Actions -->
     <div class="task-actions" v-if="isSelected && !isEditing">
       <el-button size="small" @click.stop="startEditing" :icon="Edit" />
-      <el-button size="small" @click.stop="generateSubtasks" title="Generate Subtasks">🔧</el-button>
+      <el-dropdown @command="handleDropdownCommand" trigger="click">
+        <el-button size="small" title="子任务操作">
+          🔧 <el-icon><arrow-down /></el-icon>
+        </el-button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="generate-subtasks">
+              <el-icon><magic-stick /></el-icon>
+              智能拆分子任务
+            </el-dropdown-item>
+            <el-dropdown-item command="manage-subtasks" :disabled="!hasSubtasks">
+              <el-icon><list /></el-icon>
+              管理子任务 ({{ subtaskCount }})
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
       <el-button size="small" type="danger" @click.stop="handleDelete" :icon="Delete" />
     </div>
 
@@ -88,15 +104,26 @@
       @close="hideAIPrompt"
       @command="handleAICommand"
     />
+
+    <!-- 子任务确认对话框 -->
+    <SubtaskConfirmationDialog
+      v-model:visible="showSubtaskDialog"
+      :suggestions="subtaskSuggestions"
+      :generation-data="generationData"
+      :parent-task="task"
+      @confirm="handleSubtaskConfirm"
+      @reject="handleSubtaskReject"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
-import { ElButton, ElInput, ElMessageBox } from 'element-plus'
-import { Edit, Delete } from '@element-plus/icons-vue'
+import { ref, computed, nextTick, watch } from 'vue'
+import { ElButton, ElInput, ElMessageBox, ElDropdown, ElDropdownMenu, ElDropdownItem, ElIcon, ElMessage } from 'element-plus'
+import { Edit, Delete, ArrowDown, MagicStick, List } from '@element-plus/icons-vue'
 import { useTaskStore, type Task } from '@/stores/tasks'
 import AIAssistantPrompt from './AIAssistantPrompt.vue'
+import SubtaskConfirmationDialog from './SubtaskConfirmationDialog.vue'
 
 interface Props {
   task: Task
@@ -135,9 +162,42 @@ const aiPromptContent = ref('')
 const aiPromptContext = ref('')
 const aiPromptField = ref<'title' | 'description'>('title')
 
+// 子任务相关状态
+const showSubtaskDialog = ref(false)
+const subtaskSuggestions = ref([])
+const generationData = ref(null)
+const isGeneratingSubtasks = ref(false)
+
 // Computed properties
 const moduleName = computed(() => taskStore.getModuleName(props.task.module_id))
 const moduleColor = computed(() => taskStore.getModuleColor(props.task.module_id))
+
+// 子任务相关计算属性
+const hasSubtasks = computed(() => {
+  return taskStore.tasks.some(task => task.parent_id === props.task.id)
+})
+
+const subtaskCount = computed(() => {
+  return taskStore.tasks.filter(task => task.parent_id === props.task.id).length
+})
+
+// 判断是否应该自动触发子任务拆分（≥12个中文字符）
+const shouldAutoTriggerSubtasks = computed(() => {
+  const chineseCharCount = (props.task.title.match(/[\u4e00-\u9fa5]/g) || []).length
+  return chineseCharCount >= 12
+})
+
+// 监听标题变化，自动触发子任务拆分
+watch(() => props.task.title, (newTitle) => {
+  if (shouldAutoTriggerSubtasks.value && !hasSubtasks.value) {
+    // 延迟触发，避免在编辑过程中频繁触发
+    setTimeout(() => {
+      if (shouldAutoTriggerSubtasks.value && !hasSubtasks.value) {
+        autoGenerateSubtasks()
+      }
+    }, 2000)
+  }
+})
 
 // Methods
 function handleClick() {
@@ -296,29 +356,125 @@ function handleAICommand(command: string, result: string) {
   hideAIPrompt()
 }
 
-async function generateSubtasks() {
+// 下拉菜单命令处理
+function handleDropdownCommand(command: string) {
+  if (command === 'generate-subtasks') {
+    manualGenerateSubtasks()
+  } else if (command === 'manage-subtasks') {
+    // Logic to manage subtasks, e.g., open a dialog
+    console.log('Managing subtasks for task:', props.task.id)
+  }
+}
+
+async function handleSubtaskConfirm(subtasksToCreate: any[]) {
+  console.log('Confirmed subtasks', subtasksToCreate)
   try {
-    const subtasks = await taskStore.generateTaskSubtasks(
-      props.task.title,
-      props.task.description,
-      5
-    )
+    const createdTasks = []
     
-    // Create each subtask
-    for (const subtask of subtasks) {
-      await taskStore.createTask({
-        ...subtask,
-        parent_id: props.task.id,
-        module_id: props.task.module_id
+    // 计算子任务的优先级（比父任务优先级低一级，但不超过4）
+    const childUrgency = Math.min(props.task.urgency + 1, 4)
+    
+    // 逐个创建子任务
+    for (const subtask of subtasksToCreate) {
+      const newTask = await taskStore.createTask({
+        title: subtask.title,
+        description: subtask.description,
+        urgency: childUrgency, // 使用计算后的优先级
+        module_id: props.task.module_id,
+        parent_id: props.task.id
       })
+      createdTasks.push(newTask)
     }
     
-    // Refresh tasks to show new subtasks
-    await taskStore.fetchTasks()
+    // 创建父子任务之间的依赖关系（连线）
+    for (const childTask of createdTasks) {
+      try {
+        await taskStore.createDependency(props.task.id, childTask.id)
+        console.log(`Created dependency: ${props.task.id} -> ${childTask.id}`)
+      } catch (depError) {
+        console.warn(`Failed to create dependency for task ${childTask.id}:`, depError)
+      }
+    }
     
-    emit('update', props.task) // Notify parent to refresh
+    // 刷新依赖关系以显示连线
+    await taskStore.fetchDependencies()
+    
+    ElMessage.success(`已创建 ${subtasksToCreate.length} 个子任务并建立连接关系`)
   } catch (error) {
-    console.error('Failed to generate subtasks:', error)
+    console.error('创建子任务失败:', error)
+    ElMessage.error('创建子任务失败，请重试')
+  }
+  showSubtaskDialog.value = false
+}
+
+function handleSubtaskReject(reason: string) {
+  console.log('Rejected subtasks, reason:', reason)
+  showSubtaskDialog.value = false
+}
+
+// 自动触发子任务生成
+async function autoGenerateSubtasks() {
+  if (isGeneratingSubtasks.value) return
+  
+  try {
+    isGeneratingSubtasks.value = true
+    await generateSubtasksFromAPI()
+  } catch (error) {
+    console.error('自动生成子任务失败:', error)
+  } finally {
+    isGeneratingSubtasks.value = false
+  }
+}
+
+// 手动触发子任务生成
+async function manualGenerateSubtasks() {
+  if (isGeneratingSubtasks.value) return
+  
+  try {
+    isGeneratingSubtasks.value = true
+    await generateSubtasksFromAPI()
+    showSubtaskDialog.value = true
+  } catch (error) {
+    console.error('手动生成子任务失败:', error)
+    ElMessage.error('生成子任务失败，请重试')
+  } finally {
+    isGeneratingSubtasks.value = false
+  }
+}
+
+// 调用API生成子任务
+async function generateSubtasksFromAPI() {
+  const response = await fetch('/api/ai/subtasks/generate', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      parent_task_id: props.task.id,
+      parent_task_title: props.task.title,
+      parent_task_description: props.task.description,
+      max_subtasks: 5,
+      auto_accept: false
+    })
+  })
+
+  if (!response.ok) {
+    throw new Error(`API请求失败: ${response.status}`)
+  }
+
+  const data = await response.json()
+  
+  if (!data.success) {
+    throw new Error(data.error || '生成子任务失败')
+  }
+
+  subtaskSuggestions.value = data.suggestions
+  generationData.value = {
+    model_used: data.model_used,
+    tokens_in: data.tokens_in,
+    tokens_out: data.tokens_out,
+    cost: data.cost,
+    log_id: data.log_id
   }
 }
 </script>

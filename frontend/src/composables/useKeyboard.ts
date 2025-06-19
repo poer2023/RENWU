@@ -7,29 +7,44 @@ export interface KeyboardAction {
   description: string
 }
 
-export function useKeyboard(actions: KeyboardAction[]) {
+export interface KeyboardCallbacks {
+  onQuickAdd?: () => void
+  onExport?: () => void
+  onSearch?: () => void
+  onGlobalSearch?: () => void
+}
+
+export function useKeyboard(callbacks: KeyboardCallbacks) {
   const settingsStore = useSettingsStore()
   
   function handleKeydown(event: KeyboardEvent) {
-    // 忽略在输入框中的快捷键
+    // 忽略在输入框中的快捷键（除了全局搜索）
     const target = event.target as HTMLElement
-    if (
-      target.tagName === 'INPUT' ||
-      target.tagName === 'TEXTAREA' ||
-      target.contentEditable === 'true'
-    ) {
+    const isInputElement = target.tagName === 'INPUT' || 
+                          target.tagName === 'TEXTAREA' || 
+                          target.contentEditable === 'true'
+    
+    // 全局搜索快捷键（Shift + Cmd/Ctrl + K）不受输入框影响
+    if (event.shiftKey && (event.metaKey || event.ctrlKey) && event.key === 'k') {
+      event.preventDefault()
+      callbacks.onGlobalSearch?.()
       return
     }
     
-    // 检查每个注册的快捷键
-    for (const { shortcut, action } of actions) {
-      const shortcutKey = settingsStore.shortcuts[shortcut]
-      if (settingsStore.matchesShortcut(event, shortcutKey)) {
-        event.preventDefault()
-        event.stopPropagation()
-        action()
-        break
-      }
+    if (isInputElement) {
+      return
+    }
+    
+    // 其他快捷键
+    if ((event.metaKey || event.ctrlKey) && event.key === 'p') {
+      event.preventDefault()
+      callbacks.onQuickAdd?.()
+    } else if ((event.metaKey || event.ctrlKey) && event.key === 'e') {
+      event.preventDefault()
+      callbacks.onExport?.()
+    } else if ((event.metaKey || event.ctrlKey) && event.key === 'f') {
+      event.preventDefault()
+      callbacks.onSearch?.()
     }
   }
   

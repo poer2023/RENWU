@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 from sqlmodel import Session, select
-from .models import Task, Module, History, Setting, TaskDependency
+from .models import Task, Module, History, Setting, TaskDependency, AILog
 from .schemas import TaskUpdate, ModuleCreate, SettingCreate, TaskDependencyCreate
 
 class TaskCRUD:
@@ -144,3 +144,58 @@ class TaskDependencyCRUD:
             db.commit()
             return True
         return False
+
+class AILogCRUD:
+    @staticmethod
+    def create(db: Session, obj: AILog) -> AILog:
+        db.add(obj)
+        db.commit()
+        db.refresh(obj)
+        return obj
+
+    @staticmethod
+    def read(db: Session, log_id: int) -> Optional[AILog]:
+        return db.get(AILog, log_id)
+
+    @staticmethod
+    def read_all(db: Session, skip: int = 0, limit: int = 100) -> List[AILog]:
+        statement = select(AILog).offset(skip).limit(limit).order_by(AILog.created_at.desc())
+        return db.exec(statement).all()
+
+    @staticmethod
+    def read_by_task(db: Session, task_id: int) -> List[AILog]:
+        statement = select(AILog).where(AILog.task_id == task_id).order_by(AILog.created_at.desc())
+        return db.exec(statement).all()
+
+    @staticmethod
+    def update_acceptance(db: Session, log_id: int, accepted: bool) -> Optional[AILog]:
+        log = db.get(AILog, log_id)
+        if log:
+            log.accepted = accepted
+            db.commit()
+            db.refresh(log)
+        return log
+
+    @staticmethod
+    def get_metrics(db: Session, days: int = 7) -> dict:
+        """获取AI使用指标"""
+        from datetime import datetime, timedelta
+        start_date = datetime.utcnow() - timedelta(days=days)
+        
+        statement = select(AILog).where(AILog.created_at >= start_date)
+        logs = db.exec(statement).all()
+        
+        total_requests = len(logs)
+        accepted_count = len([log for log in logs if log.accepted is True])
+        failed_count = len([log for log in logs if log.error_message is not None])
+        
+        total_tokens = sum((log.tokens_in + log.tokens_out) for log in logs)
+        total_cost = sum(log.cost for log in logs)
+        
+        return {
+            "total_requests": total_requests,
+            "adoption_rate": (accepted_count / total_requests * 100) if total_requests > 0 else 0,
+            "failure_rate": (failed_count / total_requests * 100) if total_requests > 0 else 0,
+            "avg_tokens": total_tokens / total_requests if total_requests > 0 else 0,
+            "total_cost": total_cost
+        }

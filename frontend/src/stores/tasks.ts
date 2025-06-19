@@ -46,6 +46,9 @@ export const useTaskStore = defineStore('tasks', () => {
   const taskHistory = ref<History[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const searchQuery = ref('')
+  const searchResults = ref<Task[]>([])
+  const highlightedTaskId = ref<number | null>(null)
 
   // Computed properties
   const tasksByModule = computed(() => {
@@ -62,6 +65,18 @@ export const useTaskStore = defineStore('tasks', () => {
 
   const rootTasks = computed(() => {
     return tasks.value.filter(task => !task.parent_id)
+  })
+
+  const filteredTasks = computed(() => {
+    if (!searchQuery.value.trim()) {
+      return tasks.value
+    }
+    
+    const query = searchQuery.value.toLowerCase()
+    return tasks.value.filter(task => 
+      task.title.toLowerCase().includes(query) ||
+      task.description.toLowerCase().includes(query)
+    )
   })
 
   // Actions
@@ -251,6 +266,141 @@ export const useTaskStore = defineStore('tasks', () => {
     }
   }
 
+  async function generateSubtasksFromAPI(taskId: number) {
+    loading.value = true
+    const task = tasks.value.find(t => t.id === taskId);
+    if (!task) {
+      error.value = 'Task not found'
+      console.error('Task not found for subtask generation:', taskId)
+      loading.value = false
+      throw new Error('Task not found');
+    }
+
+    try {
+      const response = await axios.post(`${API_BASE}/ai/subtasks/generate`, {
+        task_id: taskId,
+        parent_task_title: task.title,
+        parent_task_description: task.description,
+        max_subtasks: 5, // As per PRD
+      })
+      return response.data
+    } catch (err) {
+      error.value = 'Failed to generate subtasks from API'
+      console.error('Error generating subtasks:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Search functions
+  function updateSearchQuery(query: string) {
+    searchQuery.value = query
+    if (query.trim()) {
+      searchResults.value = filteredTasks.value
+    } else {
+      searchResults.value = []
+    }
+  }
+
+  function highlightTask(taskId: number) {
+    highlightedTaskId.value = taskId
+    // Auto-clear highlight after 3 seconds
+    setTimeout(() => {
+      if (highlightedTaskId.value === taskId) {
+        highlightedTaskId.value = null
+      }
+    }, 3000)
+  }
+
+  function jumpToTask(taskId: number) {
+    const task = tasks.value.find(t => t.id === taskId)
+    if (task) {
+      selectTask(task)
+      highlightTask(taskId)
+      // Emit event to scroll to task card
+      document.dispatchEvent(new CustomEvent('jumpToTask', { detail: { taskId } }))
+    }
+  }
+
+  // Workload and analysis functions
+  async function getWorkloadAnalysis(date?: string) {
+    loading.value = true
+    try {
+      const response = await axios.post(`${API_BASE}/workload/analyze`, { date })
+      return response.data
+    } catch (err) {
+      error.value = 'Workload analysis failed'
+      console.error('Error analyzing workload:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function findSimilarTasks(title: string, description: string = '', threshold: number = 0.85) {
+    loading.value = true
+    try {
+      const response = await axios.post(`${API_BASE}/ai/similar-tasks`, {
+        task_title: title,
+        task_description: description,
+        similarity_threshold: threshold
+      })
+      return response.data
+    } catch (err) {
+      error.value = 'Similar task detection failed'
+      console.error('Error finding similar tasks:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function generateWeeklyReport(startDate?: string, endDate?: string) {
+    loading.value = true
+    try {
+      const response = await axios.post(`${API_BASE}/ai/weekly-report`, {
+        start_date: startDate,
+        end_date: endDate
+      })
+      return response.data
+    } catch (err) {
+      error.value = 'Weekly report generation failed'
+      console.error('Error generating weekly report:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function analyzeTaskRisks() {
+    loading.value = true
+    try {
+      const response = await axios.post(`${API_BASE}/ai/risk-analysis`, {})
+      return response.data
+    } catch (err) {
+      error.value = 'Risk analysis failed'
+      console.error('Error analyzing risks:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function createThemeIslands() {
+    loading.value = true
+    try {
+      const response = await axios.post(`${API_BASE}/ai/theme-islands`, {})
+      return response.data
+    } catch (err) {
+      error.value = 'Theme island creation failed'
+      console.error('Error creating theme islands:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   function selectTask(task: Task | null) {
     selectedTask.value = task
     if (task) {
@@ -331,10 +481,14 @@ export const useTaskStore = defineStore('tasks', () => {
     taskHistory,
     loading,
     error,
+    searchQuery,
+    searchResults,
+    highlightedTaskId,
     
     // Computed
     tasksByModule,
     rootTasks,
+    filteredTasks,
     
     // Actions
     fetchTasks,
@@ -358,6 +512,19 @@ export const useTaskStore = defineStore('tasks', () => {
     
     // AI actions
     executeAIAssistant,
-    generateTaskSubtasks
+    generateTaskSubtasks,
+    generateSubtasksFromAPI,
+    
+    // Search actions
+    updateSearchQuery,
+    highlightTask,
+    jumpToTask,
+    
+    // v2.0 AI features
+    getWorkloadAnalysis,
+    findSimilarTasks,
+    generateWeeklyReport,
+    analyzeTaskRisks,
+    createThemeIslands
   }
 })

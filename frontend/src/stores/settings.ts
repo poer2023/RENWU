@@ -83,6 +83,9 @@ const DEFAULT_AUTO_ARRANGE: AutoArrangeOptions = {
 }
 
 export const useSettingsStore = defineStore('settings', () => {
+  // UI状态
+  const showWorkloadSidebar = ref(false)
+  const islandViewEnabled = ref(false)
   // State
   const keyboardLayout = ref<KeyboardLayout>('windows')
   const autoArrangeOptions = ref<AutoArrangeOptions>({ ...DEFAULT_AUTO_ARRANGE })
@@ -93,7 +96,6 @@ export const useSettingsStore = defineStore('settings', () => {
   const notifications = ref(true)
   const autoSave = ref(true)
   const gridVisible = ref(true)
-  const showWorkloadSidebar = ref(true)
 
   // Computed
   const shortcuts = computed(() => DEFAULT_SHORTCUTS[keyboardLayout.value])
@@ -211,6 +213,11 @@ export const useSettingsStore = defineStore('settings', () => {
     saveSettings()
   }
 
+  function toggleIslandView() {
+    islandViewEnabled.value = !islandViewEnabled.value
+    saveSettings()
+  }
+
   // Save settings to localStorage
   function saveSettings() {
     const settings = {
@@ -303,6 +310,7 @@ export const useSettingsStore = defineStore('settings', () => {
     autoSave,
     gridVisible,
     showWorkloadSidebar,
+    islandViewEnabled,
 
     // Computed
     shortcuts,
@@ -324,6 +332,7 @@ export const useSettingsStore = defineStore('settings', () => {
     toggleAutoSave,
     toggleGrid,
     toggleWorkloadSidebar,
+    toggleIslandView,
     saveSettings,
     loadSettings,
     detectPlatform,
