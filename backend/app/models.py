@@ -76,3 +76,15 @@ class Island(SQLModel, table=True):
 class Setting(SQLModel, table=True):
     key: str = Field(primary_key=True)
     value: str
+
+class AILog(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    task_id: Optional[int] = Field(default=None, foreign_key="task.id")
+    model: str
+    operation: str
+    tokens_in: int = 0
+    tokens_out: int = 0
+    cost: float = 0.0
+    accepted: Optional[bool] = None
+    error_message: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
