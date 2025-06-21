@@ -6,8 +6,8 @@ from sqlmodel import SQLModel, Session
 from typing import List
 
 from .deps import engine, get_db
-from .models import Task, Module, History, Setting, TaskDependency
-from .crud import TaskCRUD, ModuleCRUD, HistoryCRUD, SettingCRUD, TaskDependencyCRUD
+from .models import Task, Module, History, Setting, TaskDependency, Island
+from .crud import TaskCRUD, ModuleCRUD, HistoryCRUD, SettingCRUD, TaskDependencyCRUD, IslandCRUD
 from .schemas import (
     TaskCreate, TaskRead, TaskUpdate,
     ModuleCreate, ModuleRead,
@@ -21,7 +21,8 @@ from .schemas import (
     SimilarTaskRequest, SimilarTaskResponse,
     RiskAnalysisRequest, RiskAnalysisResponse,
     ThemeIslandRequest, ThemeIslandResponse,
-    TaskDependencyCreate, TaskDependencyRead
+    TaskDependencyCreate, TaskDependencyRead,
+    IslandCreate, IslandRead
 )
 from .utils.ocr import extract_text
 from .utils.ai_client import ask, assistant_command, generate_subtasks, generate_weekly_report, find_similar_tasks, analyze_task_risks, create_theme_islands
@@ -149,9 +150,18 @@ async def read_setting(key: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Setting not found")
     return setting
 
-@app.put("/settings/{key}", response_model=SettingRead)
-async def create_or_update_setting(key: str, value: str, db: Session = Depends(get_db)):
-    return SettingCRUD.create_or_update(db, key, value)
+@app.put("/settings/{key}", response_model=SettingRead)  
+async def create_or_update_setting(key: str, request: dict, db: Session = Depends(get_db)):
+    value = request.get("value", "")
+    setting = SettingCRUD.create_or_update(db, key, value)
+    
+    # If this is the Gemini API key, refresh the AI client
+    if key == "gemini_api_key":
+        from .utils.ai_client import ai_client
+        ai_client.refresh_api_key()
+        print(f"Refreshed AI client after API key update")
+    
+    return setting
 
 # OCR endpoint
 @app.post("/ocr/")
@@ -248,7 +258,7 @@ async def ai_generate_weekly_report(request: WeeklyReportRequest, db: Session = 
         )
 
 # Workload analysis endpoint
-@app.post("/workload/analyze", response_model=WorkloadAnalysisResponse)
+@app.post("/ai/workload-analysis", response_model=WorkloadAnalysisResponse)
 async def analyze_workload(request: WorkloadAnalysisRequest, db: Session = Depends(get_db)):
     try:
         from datetime import datetime, date
@@ -434,6 +444,40 @@ async def create_theme_islands_api(request: ThemeIslandRequest, db: Session = De
         # Create theme islands
         island_result = create_theme_islands(tasks_to_analyze)
         
+        # Save islands to database and update task island_ids
+        try:
+            # Clear existing islands
+            IslandCRUD.clear_all(db)
+            
+            # Create new islands and update tasks
+            for island_data in island_result["islands"]:
+                # Create island in database
+                new_island = Island(
+                    name=island_data["name"],
+                    color=island_data["color"],
+                    size=island_data["size"]
+                )
+                new_island.set_keywords(island_data.get("keywords", []))
+                saved_island = IslandCRUD.create(db, new_island)
+                
+                # Update tasks with island_id
+                for task_data in island_data["tasks"]:
+                    task = TaskCRUD.read(db, task_data["id"])
+                    if task:
+                        # Check if there's a manual override
+                        if task.island_override is not None:
+                            task.island_id = task.island_override
+                        else:
+                            task.island_id = saved_island.id
+                        TaskCRUD.update(db, task, TaskUpdate(island_id=task.island_id))
+                
+                # Update island data with saved id
+                island_data["id"] = saved_island.id
+        
+        except Exception as db_error:
+            print(f"Failed to save islands to database: {db_error}")
+            # Continue without saving to database
+        
         return ThemeIslandResponse(
             islands=island_result["islands"],
             island_stats=island_result["island_stats"],
@@ -449,6 +493,29 @@ async def create_theme_islands_api(request: ThemeIslandRequest, db: Session = De
             success=False,
             error=f"Theme island creation failed: {str(e)}"
         )
+
+# Update task island assignment
+@app.put("/tasks/{task_id}/island")
+async def update_task_island(task_id: int, island_id: int, db: Session = Depends(get_db)):
+    try:
+        task = TaskCRUD.read(db, task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        
+        # Set island override
+        task.island_override = island_id
+        TaskCRUD.update(db, task, TaskUpdate(island_override=island_id))
+        
+        return {"success": True, "message": "Task island updated"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update task island: {str(e)}")
+
+# Get islands
+@app.get("/islands/", response_model=List[IslandRead])
+def get_islands(db: Session = Depends(get_db)):
+    return IslandCRUD.read_all(db)
 
 # Task Dependencies endpoints
 @app.get("/dependencies/", response_model=List[TaskDependencyRead])
@@ -529,6 +596,24 @@ def create_manual_backup():
 def get_backup_info():
     """Get backup information"""
     return backup_service.get_backup_info()
+
+@app.get("/backup/history")
+def get_backup_history():
+    """Get backup history"""
+    try:
+        history = backup_service.get_backup_history()
+        return {"backups": history}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load backup history: {str(e)}")
+
+@app.get("/backup/list")
+def get_backup_list():
+    """Get backup list (alias for history)"""
+    try:
+        history = backup_service.get_backup_history()
+        return {"success": True, "backups": history}
+    except Exception as e:
+        return {"success": False, "error": f"Failed to load backup history: {str(e)}"}
 
 @app.post("/backup/configure")
 def configure_backup(interval_hours: int, db: Session = Depends(get_db)):

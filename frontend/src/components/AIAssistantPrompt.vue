@@ -1,7 +1,7 @@
 <template>
   <div class="ai-assistant-prompt" v-if="visible" :style="{ left: position.x + 'px', top: position.y + 'px' }">
     <div class="prompt-header">
-      <span class="prompt-title">AI Assistant</span>
+      <span class="prompt-title">AI 助手</span>
       <button class="close-btn" @click="$emit('close')">×</button>
     </div>
     
@@ -25,7 +25,7 @@
     <div class="prompt-footer" v-if="loading">
       <div class="loading-indicator">
         <span class="loading-spinner"></span>
-        Processing...
+        处理中...
       </div>
     </div>
   </div>

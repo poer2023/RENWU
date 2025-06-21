@@ -5,12 +5,67 @@ import google.generativeai as genai
 
 class AIClient:
     def __init__(self):
-        self.api_key = os.getenv("GEMINI_API_KEY")
-        if self.api_key:
-            genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel('gemini-pro')
+        self.api_key = None
+        self.model = None
+        self._initialize_client()
+    
+    def _initialize_client(self):
+        """Initialize or re-initialize the AI client with current API key"""
+        # First try environment variable (for backward compatibility)
+        api_key = os.getenv("GEMINI_API_KEY")
+        
+        # If not found, try to get from database
+        if not api_key:
+            try:
+                from ..models import Setting
+                from ..deps import engine
+                from sqlmodel import Session
+                
+                # Use the same database engine as the main app
+                with Session(engine) as db:
+                    setting = db.get(Setting, "gemini_api_key")
+                    if setting:
+                        api_key = setting.value
+            except Exception as e:
+                print(f"Failed to load API key from database: {e}")
+        
+        self.api_key = api_key
+        if self.api_key and self.api_key.strip():
+            try:
+                genai.configure(api_key=self.api_key)
+                
+                # Try different model names in order of preference
+                model_names = [
+                    'gemini-1.5-flash',
+                    'gemini-1.5-pro', 
+                    'gemini-pro',
+                    'models/gemini-1.5-flash',
+                    'models/gemini-1.5-pro',
+                    'models/gemini-pro'
+                ]
+                
+                self.model = None
+                for model_name in model_names:
+                    try:
+                        self.model = genai.GenerativeModel(model_name)
+                        print(f"AI client initialized successfully with model: {model_name}")
+                        break
+                    except Exception as model_error:
+                        print(f"Failed to initialize model {model_name}: {model_error}")
+                        continue
+                
+                if not self.model:
+                    print("Failed to initialize any Gemini model")
+            except Exception as e:
+                print(f"Failed to configure AI client: {e}")
+                self.model = None
         else:
             self.model = None
+            print("No API key found, AI features will use fallback methods")
+    
+    def refresh_api_key(self):
+        """Refresh API key from database - call this when settings are updated"""
+        self._initialize_client()
 
     def parse_tasks(self, prompt: str) -> List[Dict]:
         """
@@ -270,6 +325,7 @@ class AIClient:
             return self._fallback_generate_subtasks(parent_title, parent_description, max_subtasks)
         
         try:
+            print(f"Attempting to generate subtasks using AI model: {self.model}")
             prompt = f"""
             Generate {max_subtasks} subtasks for the following parent task:
             
@@ -301,19 +357,44 @@ class AIClient:
             ]
             """
             
+            print(f"Sending request to Gemini API...")
             response = self.model.generate_content(prompt)
+            print(f"Received response from Gemini: {response.text[:100]}...")
             
             try:
-                subtasks = json.loads(response.text.strip())
+                # Clean the response text - remove markdown code blocks if present
+                response_text = response.text.strip()
+                if response_text.startswith('```json'):
+                    # Extract JSON from markdown code block
+                    start = response_text.find('```json') + 7
+                    end = response_text.rfind('```')
+                    if end > start:
+                        response_text = response_text[start:end].strip()
+                elif response_text.startswith('```'):
+                    # Handle generic code block
+                    start = response_text.find('```') + 3
+                    end = response_text.rfind('```')
+                    if end > start:
+                        response_text = response_text[start:end].strip()
+                
+                print(f"Cleaned response text: {response_text[:200]}...")
+                
+                subtasks = json.loads(response_text)
                 if isinstance(subtasks, list):
+                    print(f"Successfully parsed {len(subtasks)} subtasks from AI")
                     return subtasks[:max_subtasks]  # Limit to max_subtasks
                 else:
+                    print(f"AI returned non-list response: {type(subtasks)}")
                     return [subtasks] if isinstance(subtasks, dict) else []
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as json_error:
+                print(f"Failed to parse JSON from AI response: {json_error}")
+                print(f"Raw response was: {response.text}")
                 return self._fallback_generate_subtasks(parent_title, parent_description, max_subtasks)
             
         except Exception as e:
             print(f"Subtask generation failed: {e}")
+            import traceback
+            traceback.print_exc()
             return self._fallback_generate_subtasks(parent_title, parent_description, max_subtasks)
     
     def _fallback_generate_subtasks(self, parent_title: str, parent_description: str, max_subtasks: int = 5) -> List[Dict]:
@@ -710,10 +791,134 @@ This week we worked on {len(tasks_data)} total tasks, with {len(completed_tasks)
     
     def _ai_theme_clustering(self, tasks: List[Dict]) -> Dict:
         """
-        Use AI to create theme islands (placeholder for future implementation)
+        Use AI to create theme islands using semantic similarity
         """
-        # For now, use fallback clustering as AI-based clustering would require specific embeddings
-        return self._fallback_theme_clustering(tasks)
+        try:
+            if len(tasks) < 2:
+                return {
+                    "islands": [{"id": 1, "name": "所有任务", "color": "#1890ff", "tasks": tasks}],
+                    "island_stats": {"total_islands": 1, "total_tasks": len(tasks)},
+                    "suggestions": []
+                }
+            
+            # Use AI to analyze and cluster tasks
+            cluster_prompt = f"""
+            分析以下 {len(tasks)} 个任务，根据主题相似性将它们分组为主题岛。
+            
+            任务列表：
+            {json.dumps([{"id": t["id"], "title": t["title"], "description": t["description"]} for t in tasks], ensure_ascii=False, indent=2)}
+            
+            请按照以下要求分组：
+            1. 每个主题岛至少3个任务
+            2. 少于3个任务的归为"杂项"
+            3. 为每个岛取一个简洁的中文名称
+            4. 提供3个关键词描述每个岛的主题
+            5. 最多创建6个主题岛
+            
+            返回JSON格式（不要其他文字）：
+            {{
+                "islands": [
+                    {{
+                        "id": 1,
+                        "name": "岛屿名称",
+                        "keywords": ["关键词1", "关键词2", "关键词3"],
+                        "task_ids": [1, 2, 3]
+                    }}
+                ],
+                "suggestions": ["建议1", "建议2"]
+            }}
+            """
+            
+            response = self.model.generate_content(cluster_prompt)
+            result_text = response.text.strip()
+            
+            # Parse AI response
+            try:
+                ai_result = json.loads(result_text)
+                return self._process_ai_clustering_result(ai_result, tasks)
+            except json.JSONDecodeError:
+                print(f"Failed to parse AI clustering result: {result_text}")
+                return self._fallback_theme_clustering(tasks)
+                
+        except Exception as e:
+            print(f"AI clustering failed: {e}")
+            return self._fallback_theme_clustering(tasks)
+    
+    def _process_ai_clustering_result(self, ai_result: Dict, tasks: List[Dict]) -> Dict:
+        """
+        Process AI clustering result and assign colors
+        """
+        # Create a task lookup dict
+        task_dict = {task["id"]: task for task in tasks}
+        
+        # Define color palette for islands
+        colors = [
+            "#FF6B6B",  # Red
+            "#4ECDC4",  # Teal  
+            "#45B7D1",  # Blue
+            "#96CEB4",  # Green
+            "#FFEAA7",  # Yellow
+            "#DDA0DD",  # Plum
+            "#F4A261",  # Orange
+            "#E9C46A"   # Gold
+        ]
+        
+        islands = []
+        island_stats = {
+            "total_islands": 0,
+            "total_tasks": len(tasks),
+            "island_distribution": {}
+        }
+        
+        for i, ai_island in enumerate(ai_result.get("islands", [])):
+            island_tasks = []
+            
+            # Get tasks for this island
+            for task_id in ai_island.get("task_ids", []):
+                if task_id in task_dict:
+                    task = task_dict[task_id].copy()
+                    task["island_id"] = ai_island["id"]
+                    island_tasks.append(task)
+            
+            if island_tasks:  # Only create island if it has tasks
+                island = {
+                    "id": ai_island["id"],
+                    "name": ai_island.get("name", f"主题岛 {i+1}"),
+                    "color": colors[i % len(colors)],
+                    "keywords": ai_island.get("keywords", []),
+                    "tasks": island_tasks,
+                    "size": len(island_tasks)
+                }
+                
+                islands.append(island)
+                island_stats["island_distribution"][island["name"]] = len(island_tasks)
+        
+        # Handle any remaining unassigned tasks
+        assigned_task_ids = set()
+        for island in islands:
+            for task in island["tasks"]:
+                assigned_task_ids.add(task["id"])
+        
+        unassigned_tasks = [task for task in tasks if task["id"] not in assigned_task_ids]
+        if unassigned_tasks:
+            misc_island = {
+                "id": len(islands) + 1,
+                "name": "杂项",
+                "color": "#95A5A6",  # Gray
+                "keywords": ["其他", "杂项"],
+                "tasks": unassigned_tasks,
+                "size": len(unassigned_tasks)
+            }
+            islands.append(misc_island)
+            island_stats["island_distribution"]["杂项"] = len(unassigned_tasks)
+        
+        island_stats["total_islands"] = len(islands)
+        
+        return {
+            "islands": islands,
+            "island_stats": island_stats,
+            "suggestions": ai_result.get("suggestions", [])
+        }
     
     def _fallback_theme_clustering(self, tasks: List[Dict]) -> Dict:
         """

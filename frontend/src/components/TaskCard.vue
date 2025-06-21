@@ -1,83 +1,118 @@
 <template>
   <div 
-    ref="cardRef"
+    ref="nodeRef"
     :data-task-id="task.id"
     :class="[
-      'task-card',
-      `urgency-${task.urgency}`,
-      { 'selected': isSelected, 'editing': isEditing }
+      'task-node',
+      `priority-${task.urgency}`,
+      { 'selected': isSelected, 'editing': isEditing, 'connecting': isConnecting, 'hovering': isHovering }
     ]"
     @click="handleClick"
     @dblclick="handleDoubleClick"
+    @mouseenter="isHovering = true"
+    @mouseleave="isHovering = false"
     :style="{ 
-      borderColor: moduleColor,
-      width: cardWidth + 'px',
-      height: cardHeight + 'px'
+      width: nodeWidth + 'px',
+      minHeight: nodeHeight + 'px'
     }"
   >
-    <!-- Urgency indicator with color -->
-    <div :class="['urgency-indicator', `urgency-badge-${task.urgency}`]">
-      P{{ task.urgency }}
+    <!-- Priority Border Strip - Left Vertical -->
+    <div class="priority-strip" :class="`priority-${task.urgency}`"></div>
+
+    <!-- Node Ports - Enhanced Design -->
+    <div class="node-port input-port" @mousedown.stop="(e) => startConnection('input', e)" v-show="isSelected || isConnecting">
+      <div class="port-dot input-dot" :class="{ 'port-active': isConnecting }">
+        <div class="port-inner"></div>
+      </div>
+      <div class="port-label">输入</div>
+    </div>
+    <div class="node-port output-port" @mousedown.stop="(e) => startConnection('output', e)" v-show="isSelected || isConnecting">
+      <div class="port-dot output-dot" :class="{ 'port-active': isConnecting }">
+        <div class="port-inner"></div>
+      </div>
+      <div class="port-label">输出</div>
     </div>
 
-    <!-- Resize handle -->
-    <div 
-      class="resize-handle"
-      @mousedown="startResize"
-    ></div>
-
-    <!-- Title -->
-    <div v-if="!isEditing" class="task-title">
-      {{ task.title }}
-    </div>
-    <el-input
-      v-else
-      v-model="editTitle"
-      ref="titleInput"
-      @blur="saveEdit"
-      @keydown.enter="saveEdit"
-      @keydown.esc="cancelEdit"
-      @input="handleTitleInput"
-      class="edit-input"
-      size="small"
-    />
-
-    <!-- Description -->
-    <div v-if="task.description && !isEditing" class="task-description">
-      {{ task.description }}
-    </div>
-    <el-input
-      v-else-if="isEditing"
-      v-model="editDescription"
-      type="textarea"
-      :rows="2"
-      @blur="saveEdit"
-      @keydown.esc="cancelEdit"
-      @input="handleDescriptionInput"
-      class="edit-textarea"
-      size="small"
-    />
-
-    <!-- Module tag -->
-    <div class="module-tag" :style="{ backgroundColor: moduleColor }">
-      {{ moduleName }}
+    <!-- Node Header -->
+    <div class="node-header">
+      <div class="node-icon">
+        <span class="task-icon">{{ getTaskIcon(task) }}</span>
+      </div>
+      <div class="node-title-area">
+        <h3 v-if="!isEditing" class="node-title">{{ task.title }}</h3>
+        <el-input
+          v-else
+          v-model="editTitle"
+          ref="titleInput"
+          @blur="saveEdit"
+          @keydown.enter="saveEdit"
+          @keydown.esc="cancelEdit"
+          @input="handleTitleInput"
+          class="edit-input"
+          size="small"
+        />
+        <div class="node-subtitle">
+          <span class="priority-badge" :class="`priority-badge-${task.urgency}`">
+            P{{ task.urgency }}
+          </span>
+          <span class="priority-name">{{ getPriorityName(task.urgency) }}</span>
+        </div>
+      </div>
     </div>
 
-    <!-- Connection points -->
-    <div v-if="isSelected" class="connection-points">
-      <div 
-        class="connection-point connection-out"
-        @mousedown.stop="startConnection"
-        title="Drag to create dependency"
-      ></div>
+    <!-- Node Body -->
+    <div class="node-body" v-if="task.description || isEditing">
+      <p v-if="!isEditing && task.description" class="node-description">{{ task.description }}</p>
+      <el-input
+        v-else-if="isEditing"
+        v-model="editDescription"
+        type="textarea"
+        :rows="2"
+        @blur="saveEdit"
+        @keydown.esc="cancelEdit"
+        @input="handleDescriptionInput"
+        class="edit-textarea"
+        size="small"
+        placeholder="添加描述..."
+      />
     </div>
 
-    <!-- Actions -->
-    <div class="task-actions" v-if="isSelected && !isEditing">
-      <el-button size="small" @click.stop="startEditing" :icon="Edit" />
-      <el-button size="small" @click.stop="generateSubtasks" title="Generate Subtasks">🔧</el-button>
-      <el-button size="small" type="danger" @click.stop="handleDelete" :icon="Delete" />
+    <!-- Node Footer -->
+    <div class="node-footer">
+      <div class="node-meta">
+        <span class="module-pill" v-if="task.module_id" :style="getModuleStyle(task.module_id)">
+          {{ getModuleName(task.module_id) }}
+        </span>
+        <div class="node-badges">
+          <span class="time-badge" :title="formatFullDate(task.created_at)">
+            {{ formatRelativeTime(task.created_at) }}
+          </span>
+          <span v-if="task.estimated_hours > 0" class="hours-badge">
+            {{ task.estimated_hours }}h
+          </span>
+        </div>
+      </div>
+      <div class="node-actions" v-if="isSelected && !isEditing">
+        <button @click.stop="startEditing" class="node-action-btn" title="编辑">
+          <span class="action-icon">✏️</span>
+        </button>
+        <button 
+          @click.stop="generateSubtasks" 
+          class="node-action-btn"
+          title="生成子任务"
+          :disabled="generating"
+        >
+          <span v-if="generating" class="action-icon loading">⏳</span>
+          <span v-else class="action-icon">🤖</span>
+        </button>
+        <button @click.stop="handleDelete" class="node-action-btn danger" title="删除任务">
+          <span class="action-icon">🗑️</span>
+        </button>
+      </div>
     </div>
+
+    <!-- Resize Handle -->
+    <div class="resize-handle" @mousedown="startResize" v-if="isSelected"></div>
 
     <!-- AI Assistant Prompt -->
     <AIAssistantPrompt
@@ -93,8 +128,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
-import { ElButton, ElInput, ElMessageBox } from 'element-plus'
-import { Edit, Delete } from '@element-plus/icons-vue'
+import { ElInput, ElMessageBox } from 'element-plus'
 import { useTaskStore, type Task } from '@/stores/tasks'
 import AIAssistantPrompt from './AIAssistantPrompt.vue'
 
@@ -117,16 +151,18 @@ const emit = defineEmits<{
 
 const taskStore = useTaskStore()
 
-const cardRef = ref<HTMLElement>()
+const nodeRef = ref<HTMLElement>()
 const isEditing = ref(false)
+const isConnecting = ref(false)
+const generating = ref(false)
+const isHovering = ref(false)
 const editTitle = ref('')
 const editDescription = ref('')
 const titleInput = ref()
 
-// Card size state
-const cardWidth = ref(200)
-const cardHeight = ref(120)
-const isResizing = ref(false)
+// Node size state
+const nodeWidth = ref(240)
+const nodeHeight = ref(120)
 
 // AI Assistant state
 const showAIPrompt = ref(false)
@@ -139,16 +175,65 @@ const aiPromptField = ref<'title' | 'description'>('title')
 const moduleName = computed(() => taskStore.getModuleName(props.task.module_id))
 const moduleColor = computed(() => taskStore.getModuleColor(props.task.module_id))
 
-// Methods
+// Utility functions
+function getTaskIcon(task: Task): string {
+  const icons = {
+    0: '🚨', // Critical
+    1: '⚡', // High
+    2: '📝', // Medium
+    3: '📋', // Low
+    4: '💭'  // Backlog
+  }
+  return icons[task.urgency as keyof typeof icons] || '📝'
+}
+
+function getPriorityName(urgency: number): string {
+  const names = {
+    0: '紧急',
+    1: '高',
+    2: '中',
+    3: '低',
+    4: '待办'
+  }
+  return names[urgency as keyof typeof names] || '中'
+}
+
+function getModuleStyle(moduleId: number | null) {
+  if (!moduleId) return {}
+  return {
+    backgroundColor: moduleColor.value,
+    color: 'rgba(0, 0, 0, 0.8)'
+  }
+}
+
+function formatRelativeTime(date: string): string {
+  const now = new Date()
+  const then = new Date(date)
+  const diffMs = now.getTime() - then.getTime()
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffMinutes = Math.floor(diffMs / (1000 * 60))
+
+  if (diffDays > 0) return `${diffDays}天前`
+  if (diffHours > 0) return `${diffHours}小时前`
+  if (diffMinutes > 0) return `${diffMinutes}分钟前`
+  return '刚刚'
+}
+
+function formatFullDate(date: string): string {
+  return new Date(date).toLocaleString('zh-CN')
+}
+
+// Event handlers
 function handleClick() {
   emit('select', props.task)
 }
 
 function handleDoubleClick(event: MouseEvent) {
   event.stopPropagation()
-  if (!cardRef.value) return
+  if (!nodeRef.value) return
   
-  const rect = cardRef.value.getBoundingClientRect()
+  const rect = nodeRef.value.getBoundingClientRect()
   const position = {
     x: rect.left + rect.width / 2,
     y: rect.bottom + 10
@@ -168,40 +253,44 @@ async function startEditing() {
   }
 }
 
+function startConnection(type: 'input' | 'output', event?: MouseEvent) {
+  if (!event) return
+  
+  console.log('StartConnection called:', type, 'task:', props.task.id)
+  isConnecting.value = true
+  
+  // 输出端口才能开始连线（从输出连到输入）
+  if (type === 'output') {
+    console.log('Emitting startConnection event:', props.task.id)
+    emit('startConnection', props.task.id, event)
+  }
+}
+
 // Resize functionality
 function startResize(event: MouseEvent) {
   event.preventDefault()
   event.stopPropagation()
   
-  isResizing.value = true
   const startX = event.clientX
   const startY = event.clientY
-  const startWidth = cardWidth.value
-  const startHeight = cardHeight.value
+  const startWidth = nodeWidth.value
+  const startHeight = nodeHeight.value
   
   function handleMouseMove(e: MouseEvent) {
     const deltaX = e.clientX - startX
     const deltaY = e.clientY - startY
     
-    cardWidth.value = Math.max(150, startWidth + deltaX)
-    cardHeight.value = Math.max(80, startHeight + deltaY)
+    nodeWidth.value = Math.max(200, startWidth + deltaX)
+    nodeHeight.value = Math.max(100, startHeight + deltaY)
   }
   
   function handleMouseUp() {
-    isResizing.value = false
     document.removeEventListener('mousemove', handleMouseMove)
     document.removeEventListener('mouseup', handleMouseUp)
   }
   
   document.addEventListener('mousemove', handleMouseMove)
   document.addEventListener('mouseup', handleMouseUp)
-}
-
-// Connection functionality
-function startConnection(event: MouseEvent) {
-  event.preventDefault()
-  event.stopPropagation()
-  emit('startConnection', props.task.id, event)
 }
 
 async function saveEdit() {
@@ -237,11 +326,11 @@ function cancelEdit() {
 async function handleDelete() {
   try {
     await ElMessageBox.confirm(
-      'Are you sure you want to delete this task?',
-      'Delete Task',
+      '确定要删除这个任务吗？',
+      '删除任务',
       {
-        confirmButtonText: 'Delete',
-        cancelButtonText: 'Cancel',
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
         type: 'warning',
       }
     )
@@ -268,9 +357,9 @@ function handleDescriptionInput(value: string) {
 }
 
 function showAIPromptFor(field: 'title' | 'description', content: string) {
-  if (!cardRef.value) return
+  if (!nodeRef.value) return
   
-  const rect = cardRef.value.getBoundingClientRect()
+  const rect = nodeRef.value.getBoundingClientRect()
   aiPromptPosition.value = {
     x: rect.right + 10,
     y: rect.top
@@ -298,6 +387,7 @@ function handleAICommand(command: string, result: string) {
 
 async function generateSubtasks() {
   try {
+    generating.value = true
     const subtasks = await taskStore.generateTaskSubtasks(
       props.task.title,
       props.task.description,
@@ -315,177 +405,539 @@ async function generateSubtasks() {
     
     // Refresh tasks to show new subtasks
     await taskStore.fetchTasks()
-    
-    emit('update', props.task) // Notify parent to refresh
+    emit('update', props.task)
   } catch (error) {
     console.error('Failed to generate subtasks:', error)
+  } finally {
+    generating.value = false
   }
 }
 </script>
 
 <style scoped>
-.task-card {
+/* Task Node - n8n/Dify Style */
+.task-node {
   position: relative;
-  min-width: 150px;
-  min-height: 80px;
-  padding: 12px;
-  border-radius: 8px;
-  border: 2px solid transparent;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
   cursor: pointer;
   user-select: none;
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
-  font-size: 12px;
-  background: #ffffff;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: var(--font-family);
   overflow: hidden;
-  contain: layout style;
-  transform: translate3d(0, 0, 0);
+  min-width: 200px;
+  max-width: 400px;
+  backdrop-filter: blur(8px);
+  will-change: transform, box-shadow;
 }
 
-.task-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transform: translate3d(0, -1px, 0);
+.task-node:hover {
+  box-shadow: var(--shadow-xl), 0 0 20px rgba(59, 130, 246, 0.15);
+  transform: translateY(-4px) scale(1.02);
+  border-color: var(--primary-light);
+  background-color: var(--card-hover);
 }
 
-.task-card.selected {
-  border-color: #409EFF !important;
-  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
+.task-node:hover .priority-strip {
+  height: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.task-card.editing {
-  box-shadow: 0 0 0 2px rgba(103, 194, 58, 0.3);
+.task-node:hover .node-icon {
+  transform: scale(1.1);
+  background-color: var(--primary-light);
 }
 
-/* Urgency color backgrounds - lighter for better readability */
-.urgency-0 { background: #fff1f0; border-left: 4px solid #ff4d4f; } /* P0 - Critical - Red */
-.urgency-1 { background: #fff7e6; border-left: 4px solid #fa8c16; } /* P1 - High - Orange */
-.urgency-2 { background: #feffe6; border-left: 4px solid #fadb14; } /* P2 - Medium - Yellow */
-.urgency-3 { background: #f6ffed; border-left: 4px solid #52c41a; } /* P3 - Low - Green */
-.urgency-4 { background: #f0f5ff; border-left: 4px solid #1890ff; } /* P4 - Backlog - Blue */
+.task-node:hover .node-title {
+  color: var(--primary);
+}
 
-.urgency-indicator {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  padding: 2px 6px;
-  border-radius: 12px;
-  font-size: 10px;
-  font-weight: bold;
-  color: white;
+.task-node.selected {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light), var(--shadow-xl);
+  transform: translateY(-2px);
   z-index: 10;
 }
 
-/* Urgency badge colors */
-.urgency-badge-0 { background: #ff4d4f; } /* Critical - Red */
-.urgency-badge-1 { background: #fa8c16; } /* High - Orange */
-.urgency-badge-2 { background: #fadb14; color: #000; } /* Medium - Yellow */
-.urgency-badge-3 { background: #52c41a; } /* Low - Green */
-.urgency-badge-4 { background: #1890ff; } /* Backlog - Blue */
+.task-node.selected .priority-strip {
+  animation: priority-glow 2s infinite alternate;
+}
 
-/* Resize handle */
+@keyframes priority-glow {
+  from {
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+  }
+  to {
+    box-shadow: 0 0 16px rgba(59, 130, 246, 0.4);
+  }
+}
+
+.task-node.connecting {
+  border-color: var(--info);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+}
+
+/* Priority Border Strip - Left Vertical */
+.priority-strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+
+.priority-strip.priority-0 { background-color: var(--danger); }
+.priority-strip.priority-1 { background-color: var(--warning); }
+.priority-strip.priority-2 { background-color: var(--info); }
+.priority-strip.priority-3 { background-color: var(--success); }
+.priority-strip.priority-4 { background-color: var(--primary); }
+
+/* Node Ports */
+.node-port {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+
+.task-node.selected .node-port,
+.task-node.connecting .node-port {
+  opacity: 1;
+}
+
+.task-node:hover .node-port {
+  opacity: 0.6;
+}
+
+.task-node.connecting {
+  box-shadow: 0 0 0 2px var(--info), var(--shadow-lg);
+}
+
+.input-port {
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  flex-direction: row;
+}
+
+.output-port {
+  right: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  flex-direction: row-reverse;
+}
+
+.port-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: var(--border-default);
+  border: 2px solid var(--card-bg);
+  cursor: crosshair;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.port-inner {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--text-muted);
+  transition: all 0.2s ease;
+}
+
+.input-dot {
+  background-color: var(--success);
+}
+
+.output-dot {
+  background-color: var(--primary);
+}
+
+.port-dot:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.3);
+}
+
+.input-dot:hover {
+  background-color: var(--success);
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.4);
+}
+
+.input-dot:hover .port-inner {
+  background-color: var(--card-bg);
+  transform: scale(1.2);
+}
+
+.output-dot:hover {
+  background-color: var(--primary);
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.4);
+}
+
+.output-dot:hover .port-inner {
+  background-color: var(--card-bg);
+  transform: scale(1.2);
+}
+
+.port-dot.port-active {
+  background-color: var(--primary-hover);
+  transform: scale(1.2);
+  box-shadow: 0 0 16px var(--primary-light);
+  animation: port-pulse 1.5s infinite;
+}
+
+@keyframes port-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.4);
+  }
+}
+
+.port-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  margin: 0 8px;
+  padding: 2px 6px;
+  background-color: var(--bg-elevated);
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.node-port:hover .port-label {
+  opacity: 1;
+}
+
+/* Node Header */
+.node-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 16px 12px 20px; /* Add left padding for vertical strip */
+}
+
+.node-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  font-size: 16px;
+}
+
+.node-title-area {
+  flex: 1;
+  min-width: 0;
+}
+
+.node-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+  line-height: var(--line-height-tight);
+  word-wrap: break-word;
+}
+
+.node-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: white;
+}
+
+.priority-badge.priority-badge-0 { background-color: var(--danger); }
+.priority-badge.priority-badge-1 { background-color: var(--warning); }
+.priority-badge.priority-badge-2 { background-color: var(--info); }
+.priority-badge.priority-badge-3 { background-color: var(--success); }
+.priority-badge.priority-badge-4 { background-color: var(--primary); }
+
+.priority-name {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+/* Node Body */
+.node-body {
+  padding: 0 16px 8px 20px; /* Add left padding for vertical strip */
+}
+
+.node-description {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: var(--line-height-normal);
+  margin: 0;
+  word-wrap: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Node Footer */
+.node-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px 16px 20px; /* Add left padding for vertical strip */
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 8px;
+}
+
+.node-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.module-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  background-color: var(--bg-elevated);
+  color: var(--text-secondary);
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  border: 1px solid var(--border-subtle);
+}
+
+.task-node:hover .module-pill {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+  border-color: var(--border-default);
+}
+
+.node-badges {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.time-badge,
+.hours-badge {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  padding: 1px 4px;
+  border-radius: 3px;
+  background-color: var(--bg-elevated);
+}
+
+/* Node Actions */
+.node-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.node-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--text-secondary);
+  position: relative;
+  overflow: hidden;
+}
+
+.node-action-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: var(--primary-light);
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  transform: translate(-50%, -50%);
+  z-index: -1;
+}
+
+.node-action-btn:hover {
+  background-color: var(--bg-elevated);
+  transform: scale(1.15) translateY(-1px);
+  box-shadow: var(--shadow-sm);
+  color: var(--primary);
+}
+
+.node-action-btn:hover::before {
+  width: 100%;
+  height: 100%;
+}
+
+.node-action-btn:active {
+  transform: scale(1.05);
+  transition: all 0.1s ease;
+}
+
+.node-action-btn.danger:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+}
+
+.node-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-icon {
+  font-size: 12px;
+}
+
+.action-icon.loading {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Resize Handle */
 .resize-handle {
   position: absolute;
   bottom: 0;
   right: 0;
-  width: 12px;
-  height: 12px;
-  background: linear-gradient(-45deg, transparent 30%, #ccc 30%, #ccc 40%, transparent 40%, transparent 60%, #ccc 60%, #ccc 70%, transparent 70%);
+  width: 20px;
+  height: 20px;
   cursor: se-resize;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: all 0.3s ease;
+  background: linear-gradient(135deg, transparent 40%, var(--primary-light) 50%, var(--primary) 100%);
+  border-radius: var(--radius-sm) 0 var(--radius-lg) 0;
 }
 
-.task-card:hover .resize-handle {
-  opacity: 0.6;
+.resize-handle::before {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-bottom: 6px solid var(--text-muted);
+}
+
+.task-node:hover .resize-handle {
+  opacity: 0.7;
+  transform: scale(1.1);
 }
 
 .resize-handle:hover {
-  opacity: 1 !important;
-}
-
-.task-title {
-  font-weight: 600;
-  margin-bottom: 6px;
-  line-height: 1.3;
-  word-wrap: break-word;
-}
-
-.task-description {
-  color: #666;
-  margin-bottom: 8px;
-  line-height: 1.4;
-  word-wrap: break-word;
-}
-
-.module-tag {
-  position: absolute;
-  bottom: 4px;
-  left: 4px;
-  color: rgba(0, 0, 0, 0.7);
-  padding: 2px 6px;
-  border-radius: 10px;
-  font-size: 10px;
-  font-weight: 500;
-}
-
-.task-actions {
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  display: flex;
-  gap: 4px;
-}
-
-.edit-input {
-  margin-bottom: 8px;
-}
-
-.edit-textarea {
-  margin-bottom: 8px;
-}
-
-/* Element Plus overrides for smaller buttons */
-:deep(.el-button--small) {
-  padding: 4px 6px;
-  font-size: 10px;
-}
-
-/* Connection points */
-.connection-points {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-.connection-point {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #409EFF;
-  border: 2px solid #fff;
-  pointer-events: auto;
-  cursor: crosshair;
-  opacity: 0;
-  transition: opacity 0.2s;
-  z-index: 15;
-}
-
-.connection-point:hover {
   opacity: 1;
   transform: scale(1.2);
+  box-shadow: var(--shadow-sm);
 }
 
-.task-card.selected .connection-point {
-  opacity: 0.7;
+/* Priority Strip Animations */
+.priority-strip {
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
-.connection-out {
-  right: -6px;
-  top: 50%;
-  transform: translateY(-50%);
+.priority-strip::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s ease;
+}
+
+.task-node:hover .priority-strip::after {
+  left: 100%;
+}
+
+/* Micro Interactions */
+.node-badges {
+  transition: all 0.2s ease;
+}
+
+.task-node:hover .node-badges {
+  transform: translateX(2px);
+}
+
+.time-badge,
+.hours-badge {
+  transition: all 0.2s ease;
+}
+
+.task-node:hover .time-badge,
+.task-node:hover .hours-badge {
+  background-color: var(--primary-light);
+  color: var(--primary);
+  transform: scale(1.05);
+}
+
+/* Loading States */
+.action-icon.loading {
+  animation: spin 1s linear infinite;
+}
+
+/* Edit Inputs */
+.edit-input,
+.edit-textarea {
+  font-family: var(--font-family);
+}
+
+:deep(.el-input__wrapper) {
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+:deep(.el-input__inner) {
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+}
+
+:deep(.el-textarea__inner) {
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  border-radius: var(--radius-md);
 }
 </style>

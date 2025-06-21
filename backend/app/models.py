@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship
+import json
 
 class Module(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -17,6 +18,10 @@ class Task(SQLModel, table=True):
     parent_id: Optional[int] = Field(default=None, foreign_key="task.id")
     estimated_hours: float = 0.0  # Work hour estimation
     due_date: Optional[datetime] = None  # Due date for scheduling
+    
+    # Theme Island fields
+    island_id: int = Field(default=-1)  # -1 means not clustered (noise)
+    island_override: Optional[int] = Field(default=None)  # Manual island assignment
 
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -47,6 +52,26 @@ class TaskDependency(SQLModel, table=True):
     from_task_id: int = Field(foreign_key="task.id")
     to_task_id: int = Field(foreign_key="task.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class Island(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    color: str
+    size: int = 0  # Number of tasks in this island
+    keywords: str = "[]"  # JSON string of keywords list
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    def get_keywords(self) -> List[str]:
+        """Get keywords as a list"""
+        try:
+            return json.loads(self.keywords)
+        except:
+            return []
+    
+    def set_keywords(self, keywords_list: List[str]):
+        """Set keywords from a list"""
+        self.keywords = json.dumps(keywords_list)
 
 class Setting(SQLModel, table=True):
     key: str = Field(primary_key=True)

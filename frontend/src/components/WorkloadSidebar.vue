@@ -5,7 +5,7 @@
       <el-date-picker
         v-model="selectedDate"
         type="date"
-        placeholder="Select date"
+        placeholder="选择日期"
         size="small"
         @change="fetchWorkload"
         format="YYYY-MM-DD"
@@ -32,19 +32,19 @@
 
       <div class="conflict-status">
         <div v-if="workload.conflict_level === 'green'" class="status-message green">
-          ✅ Workload is manageable
+          ✅ 工作负荷可管理
         </div>
         <div v-else-if="workload.conflict_level === 'yellow'" class="status-message yellow">
-          ⚠️ High workload - monitor progress
+          ⚠️ 高工作负荷 - 监控进度
         </div>
         <div v-else class="status-message red">
-          🚨 Overloaded - reschedule tasks
+          🚨 工作超负荷 - 重新安排任务
         </div>
       </div>
     </div>
 
     <div class="task-breakdown" v-if="workload && workload.tasks.length > 0">
-      <h4>Today's Tasks</h4>
+      <h4>今日任务</h4>
       <div class="task-list">
         <div
           v-for="task in workload.tasks"
@@ -69,21 +69,21 @@
     </div>
 
     <div class="empty-state" v-else-if="workload && workload.tasks.length === 0">
-      <p>No tasks scheduled for this date</p>
+      <p>此日期没有安排任务</p>
     </div>
 
     <div class="loading-state" v-if="loading">
       <el-icon class="is-loading"><Loading /></el-icon>
-      <span>Analyzing workload...</span>
+      <span>分析工作负荷中...</span>
     </div>
 
     <!-- Hours Adjustment Dialog -->
-    <el-dialog v-model="showHoursDialog" title="Adjust Estimated Hours" width="400px">
+    <el-dialog v-model="showHoursDialog" title="调整预估时长" width="400px">
       <el-form v-if="selectedTask">
-        <el-form-item label="Task">
+        <el-form-item label="任务">
           <div>{{ selectedTask.title }}</div>
         </el-form-item>
-        <el-form-item label="Estimated Hours">
+        <el-form-item label="预估时长">
           <el-input-number
             v-model="newHours"
             :min="0.5"
@@ -96,8 +96,8 @@
       </el-form>
       
       <template #footer>
-        <el-button @click="showHoursDialog = false">Cancel</el-button>
-        <el-button type="primary" @click="saveHours">Save</el-button>
+        <el-button @click="showHoursDialog = false">取消</el-button>
+        <el-button type="primary" @click="saveHours">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -146,7 +146,7 @@ const fetchWorkload = async () => {
     workload.value = response.data
   } catch (error) {
     console.error('Failed to fetch workload:', error)
-    ElMessage.error('Failed to analyze workload')
+    ElMessage.error('分析工作负荷失败')
   } finally {
     loading.value = false
   }
@@ -181,10 +181,10 @@ const saveHours = async () => {
     // Refresh workload analysis
     await fetchWorkload()
     
-    ElMessage.success('Hours updated successfully')
+    ElMessage.success('时长更新成功')
   } catch (error) {
     console.error('Failed to update hours:', error)
-    ElMessage.error('Failed to update hours')
+    ElMessage.error('更新时长失败')
   }
 }
 

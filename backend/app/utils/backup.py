@@ -102,6 +102,44 @@ class BackupService:
             "backup_dir": str(self.backup_dir),
             "scheduler_running": self.scheduler.running if self.scheduler else False
         }
+    
+    def get_backup_history(self) -> list:
+        """Get a list of all backup files with details"""
+        backups = []
+        
+        # Get all JSON backup files
+        json_files = list(self.backup_dir.glob("taskwall_backup_*.json"))
+        
+        for json_file in json_files:
+            try:
+                # Get file stats
+                stat = json_file.stat()
+                
+                # Find corresponding markdown file
+                md_filename = json_file.stem + '.md'
+                md_file = self.backup_dir / md_filename
+                
+                backup_info = {
+                    "id": json_file.stem,
+                    "filename": json_file.name,
+                    "created_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                    "size": stat.st_size,
+                    "formats": ["json"]
+                }
+                
+                if md_file.exists():
+                    backup_info["formats"].append("markdown")
+                
+                backups.append(backup_info)
+                
+            except Exception as e:
+                print(f"Error processing backup file {json_file}: {e}")
+                continue
+        
+        # Sort by creation time, newest first
+        backups.sort(key=lambda x: x["created_at"], reverse=True)
+        
+        return backups
 
 # Global backup service instance
 backup_service = BackupService()

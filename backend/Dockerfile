@@ -2,19 +2,15 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies with retry
-RUN apt-get update && apt-get install -y --no-install-recommends --fix-missing \
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
     tesseract-ocr \
     tesseract-ocr-chi-sim \
     tesseract-ocr-eng \
     curl \
-    || (apt-get update && apt-get install -y --no-install-recommends \
-    tesseract-ocr \
-    tesseract-ocr-chi-sim \
-    tesseract-ocr-eng \
-    curl) \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 COPY requirements.txt ./

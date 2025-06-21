@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 from sqlmodel import Session, select
-from .models import Task, Module, History, Setting, TaskDependency
+from .models import Task, Module, History, Setting, TaskDependency, Island
 from .schemas import TaskUpdate, ModuleCreate, SettingCreate, TaskDependencyCreate
 
 class TaskCRUD:
@@ -144,3 +144,49 @@ class TaskDependencyCRUD:
             db.commit()
             return True
         return False
+
+
+class IslandCRUD:
+    @staticmethod
+    def create(db: Session, island: Island) -> Island:
+        db.add(island)
+        db.commit()
+        db.refresh(island)
+        return island
+
+    @staticmethod
+    def read(db: Session, island_id: int) -> Optional[Island]:
+        return db.get(Island, island_id)
+
+    @staticmethod
+    def read_all(db: Session) -> List[Island]:
+        statement = select(Island)
+        return db.exec(statement).all()
+
+    @staticmethod
+    def update(db: Session, db_obj: Island, **kwargs) -> Island:
+        for field, value in kwargs.items():
+            if hasattr(db_obj, field):
+                setattr(db_obj, field, value)
+        db_obj.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+
+    @staticmethod
+    def delete(db: Session, island_id: int) -> bool:
+        island = db.get(Island, island_id)
+        if island:
+            db.delete(island)
+            db.commit()
+            return True
+        return False
+        
+    @staticmethod
+    def clear_all(db: Session):
+        """Clear all islands"""
+        statement = select(Island)
+        islands = db.exec(statement).all()
+        for island in islands:
+            db.delete(island)
+        db.commit()

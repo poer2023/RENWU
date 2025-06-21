@@ -23,6 +23,8 @@ class TaskBase(BaseModel):
     parent_id: Optional[int] = None
     estimated_hours: float = 0.0
     due_date: Optional[datetime] = None
+    island_id: int = -1
+    island_override: Optional[int] = None
 
 class TaskCreate(TaskBase):
     pass
@@ -155,6 +157,24 @@ class TaskDependencyCreate(TaskDependencyBase):
 class TaskDependencyRead(TaskDependencyBase):
     id: int
     created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Island schemas
+class IslandBase(BaseModel):
+    name: str
+    color: str
+    size: int = 0
+    keywords: List[str] = []
+
+class IslandCreate(IslandBase):
+    pass
+
+class IslandRead(IslandBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True

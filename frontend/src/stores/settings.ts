@@ -14,6 +14,7 @@ export interface KeyboardShortcuts {
   delete: string
   duplicate: string
   search: string
+  commandPalette: string
   zoomIn: string
   zoomOut: string
   resetZoom: string
@@ -44,6 +45,7 @@ const DEFAULT_SHORTCUTS: Record<KeyboardLayout, KeyboardShortcuts> = {
     delete: 'Delete',
     duplicate: 'Ctrl+D',
     search: 'Ctrl+F',
+    commandPalette: 'Ctrl+Shift+P',
     zoomIn: 'Ctrl+=',
     zoomOut: 'Ctrl+-',
     resetZoom: 'Ctrl+0',
@@ -62,6 +64,7 @@ const DEFAULT_SHORTCUTS: Record<KeyboardLayout, KeyboardShortcuts> = {
     delete: 'Delete',
     duplicate: '⌘D',
     search: '⌘F',
+    commandPalette: '⌘⇧P',
     zoomIn: '⌘=',
     zoomOut: '⌘-',
     resetZoom: '⌘0',
@@ -94,6 +97,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const autoSave = ref(true)
   const gridVisible = ref(true)
   const showWorkloadSidebar = ref(true)
+  const autoBackup = ref(true)
 
   // Computed
   const shortcuts = computed(() => DEFAULT_SHORTCUTS[keyboardLayout.value])
@@ -211,6 +215,11 @@ export const useSettingsStore = defineStore('settings', () => {
     saveSettings()
   }
 
+  function toggleAutoBackup() {
+    autoBackup.value = !autoBackup.value
+    saveSettings()
+  }
+
   // Save settings to localStorage
   function saveSettings() {
     const settings = {
@@ -223,7 +232,8 @@ export const useSettingsStore = defineStore('settings', () => {
       notifications: notifications.value,
       autoSave: autoSave.value,
       gridVisible: gridVisible.value,
-      showWorkloadSidebar: showWorkloadSidebar.value
+      showWorkloadSidebar: showWorkloadSidebar.value,
+      autoBackup: autoBackup.value
     }
     localStorage.setItem('taskwall-settings', JSON.stringify(settings))
   }
@@ -244,16 +254,18 @@ export const useSettingsStore = defineStore('settings', () => {
         autoSave.value = settings.autoSave !== undefined ? settings.autoSave : true
         gridVisible.value = settings.gridVisible !== undefined ? settings.gridVisible : true
         showWorkloadSidebar.value = settings.showWorkloadSidebar !== undefined ? settings.showWorkloadSidebar : true
+        autoBackup.value = settings.autoBackup !== undefined ? settings.autoBackup : true
       }
     } catch (error) {
       console.warn('Failed to load settings:', error)
     }
   }
 
-  // Detect platform automatically
+  // Detect platform automatically (default to Windows)
   function detectPlatform() {
     const platform = navigator.platform.toLowerCase()
     const isMacPlatform = platform.includes('mac') || platform.includes('darwin')
+    // Only set to mac if explicitly detected as Mac platform, otherwise default to Windows
     setKeyboardLayout(isMacPlatform ? 'mac' : 'windows')
   }
 
@@ -303,6 +315,7 @@ export const useSettingsStore = defineStore('settings', () => {
     autoSave,
     gridVisible,
     showWorkloadSidebar,
+    autoBackup,
 
     // Computed
     shortcuts,
@@ -324,6 +337,7 @@ export const useSettingsStore = defineStore('settings', () => {
     toggleAutoSave,
     toggleGrid,
     toggleWorkloadSidebar,
+    toggleAutoBackup,
     saveSettings,
     loadSettings,
     detectPlatform,

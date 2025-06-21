@@ -1,159 +1,19 @@
 <template>
   <div class="home-layout">
-    <!-- Top Bar -->
-    <header class="top-bar">
-      <div class="top-bar-left">
-        <h1 class="app-title">TaskWall</h1>
-        <el-button @click="showQuickAdd = true" type="primary" size="small">
-          ⌘P Quick Add
-        </el-button>
-      </div>
-      
-      <div class="top-bar-center">
-        <el-input
-          v-model="searchQuery"
-          placeholder="Search tasks... (⇧⌘K)"
-          clearable
-          size="small"
-          style="width: 300px;"
-          @input="handleSearch"
-          @keydown.enter="selectFirstResult"
-          @keydown.escape="clearSearch"
-          ref="searchInput"
-        >
-          <template #prefix>
-            <el-icon><Search /></el-icon>
-          </template>
-        </el-input>
-      </div>
-      
-      <div class="top-bar-right">
-        <el-button @click="showAutoArrangeDialog = true" size="small">
-          🎯 自动排列
-        </el-button>
-        <el-button @click="generateWeeklyReport" size="small">
-          📊 Weekly Report
-        </el-button>
-        <el-button @click="settingsStore.toggleWorkloadSidebar" size="small">
-          📈 Workload
-        </el-button>
-        <el-button 
-          @click="toggleIslandView" 
-          size="small"
-          :loading="islandViewLoading"
-          :type="islandViewEnabled ? 'primary' : 'default'"
-        >
-          🏝️ 主题岛
-        </el-button>
-        <el-button @click="exportTasks" size="small" :icon="Download">
-          Export
-        </el-button>
-        <el-button @click="showSettings = true" size="small" :icon="Setting">
-          Settings
-        </el-button>
-      </div>
-    </header>
-
-    <!-- Main Content -->
-    <div class="main-content">
-      <!-- Left Sidebar - Capture Panel -->
-      <aside class="capture-panel">
-        <div class="panel-section">
-          <h3>Quick Add</h3>
-          <el-input
-            v-model="quickText"
-            type="textarea"
-            :rows="3"
-            placeholder="Paste text or describe tasks..."
-            @keydown.meta.enter="parseQuickText"
-          />
-          <el-button 
-            @click="parseQuickText" 
-            type="primary" 
-            :loading="taskStore.loading"
-            class="w-full mt-2"
-          >
-            Parse with AI
-          </el-button>
-        </div>
-
-        <div class="panel-section">
-          <h3>Image Upload</h3>
-          <el-upload
-            ref="upload"
-            :auto-upload="false"
-            :on-change="handleImageUpload"
-            accept="image/*"
-            :show-file-list="false"
-            drag
-          >
-            <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-            <div class="el-upload__text">
-              Drop image here or <em>click to upload</em>
-            </div>
-          </el-upload>
-        </div>
-
-        <div class="panel-section" v-if="taskInbox.length > 0">
-          <h3>Inbox ({{ taskInbox.length }})</h3>
-          <div class="inbox-tasks">
-            <div 
-              v-for="(task, index) in taskInbox"
-              :key="index"
-              class="inbox-task"
-            >
-              <div class="task-info">
-                <strong>{{ task.title }}</strong>
-                <p v-if="task.description">{{ task.description }}</p>
-                <el-tag size="small">P{{ task.urgency }}</el-tag>
-              </div>
-              <div class="task-actions">
-                <el-button size="small" @click="createTaskFromInbox(task)">
-                  Add
-                </el-button>
-                <el-button size="small" @click="removeFromInbox(index)">
-                  ×
-                </el-button>
-              </div>
-            </div>
-          </div>
-          <el-button 
-            @click="createAllFromInbox" 
-            type="success" 
-            size="small"
-            class="w-full mt-2"
-          >
-            Create All
-          </el-button>
-        </div>
-
-        <div class="panel-section">
-          <h3>Modules</h3>
-          <div class="module-list">
-            <div 
-              v-for="module in taskStore.modules"
-              :key="module.id"
-              class="module-item"
-              :style="{ backgroundColor: module.color }"
-            >
-              {{ module.name }}
-            </div>
-          </div>
-          <el-button @click="showNewModule = true" size="small" class="w-full">
-            + Add Module
-          </el-button>
-        </div>
-      </aside>
-
-      <!-- Center Canvas -->
-      <main class="canvas-area">
-        <!-- Add debug component temporarily -->
-        <DebugTaskList :tasks="taskStore.tasks" style="position: absolute; top: 10px; right: 10px; width: 400px; z-index: 1000;" />
+    <!-- Modern Canvas Layout - No Top Bar -->
+    <div class="canvas-layout">
+      <!-- Full Screen Canvas -->
+      <main class="fullscreen-canvas">
+        <!-- Risk Radar (Hidden by default, show on demand) -->
+        <RiskRadar 
+          v-if="showRiskRadar" 
+          @view-task="handleViewRiskyTask" 
+          style="position: absolute; top: 20px; right: 20px; z-index: 900;"
+        />
         
-        <!-- Risk Radar -->
-        <RiskRadar @view-task="handleViewRiskyTask" />
-        
+        <!-- Main Canvas Component -->
         <StickyCanvas
+          v-if="currentView === 'canvas'"
           ref="stickyCanvasRef"
           :tasks="taskStore.tasks"
           :selected-task="selectedTask"
@@ -162,15 +22,241 @@
           @auto-arrange-complete="handleAutoArrangeComplete"
         />
         
+        <!-- Timeline View Component -->
+        <div v-if="currentView === 'timeline'" class="timeline-view">
+          <div class="timeline-header">
+            <h2>📅 时间线视图</h2>
+            <div class="timeline-controls">
+              <el-button-group>
+                <el-button 
+                  :type="timelineFilter === 'all' ? 'primary' : ''"
+                  @click="timelineFilter = 'all'"
+                  size="small"
+                >
+                  全部
+                </el-button>
+                <el-button 
+                  :type="timelineFilter === 'pending' ? 'primary' : ''"
+                  @click="timelineFilter = 'pending'"
+                  size="small"
+                >
+                  进行中
+                </el-button>
+                <el-button 
+                  :type="timelineFilter === 'completed' ? 'primary' : ''"
+                  @click="timelineFilter = 'completed'"
+                  size="small"
+                >
+                  已完成
+                </el-button>
+              </el-button-group>
+            </div>
+          </div>
+          
+          <div class="timeline-container">
+            <div class="timeline-line"></div>
+            
+            <div v-if="filteredTimelineTasks.length === 0" class="timeline-empty">
+              <div class="empty-content">
+                <div class="empty-icon">📅</div>
+                <h3>暂无任务</h3>
+                <p>{{ timelineFilter === 'all' ? '还没有任务' : getTimelineEmptyMessage() }}</p>
+              </div>
+            </div>
+            
+            <div 
+              v-for="(task, index) in filteredTimelineTasks" 
+              :key="task.id"
+              class="timeline-item"
+              :class="getTimelineItemClass(task)"
+              @click="handleTimelineTaskClick(task)"
+            >
+              <div class="timeline-dot" :style="{ backgroundColor: getTaskColor(task) }"></div>
+              <div class="timeline-content">
+                <div class="timeline-date">
+                  {{ formatTimelineDate(task.created_at || task.updated_at) }}
+                </div>
+                <div class="timeline-task">
+                  <div class="task-header">
+                    <h4>{{ task.title }}</h4>
+                    <div class="task-badges">
+                      <span class="priority-badge" :class="getPriorityClass(task.urgency)">
+                        {{ getPriorityText(task.urgency) }}
+                      </span>
+                      <span v-if="task.status" class="status-badge" :class="task.status">
+                        {{ getStatusText(task.status) }}
+                      </span>
+                    </div>
+                  </div>
+                  <p v-if="task.description" class="task-description">
+                    {{ task.description }}
+                  </p>
+                  <div class="task-meta">
+                    <span v-if="task.module_id" class="module-tag">
+                      {{ getModuleName(task.module_id) }}
+                    </span>
+                    <span class="task-id">#{{ task.id }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <!-- Empty state -->
         <div v-if="taskStore.tasks.length === 0" class="empty-state">
-          <h2>Welcome to TaskWall</h2>
-          <p>Start by adding some tasks using the Quick Add panel or upload an image</p>
+          <div class="empty-content">
+            <div class="empty-icon">📁</div>
+            <h2>欢迎使用 TaskWall</h2>
+            <p>点击右下角 + 按钮开始创建任务</p>
+            <p class="shortcut-hint">或按 <kbd>Q</kbd> 快速添加</p>
+          </div>
         </div>
       </main>
-
-      <!-- Right Sidebar - Workload Analysis -->
-      <WorkloadSidebar v-if="settingsStore.showWorkloadSidebar" />
+      
+      <!-- Context Toolbar (appears when nodes are selected) -->
+      <div 
+        v-if="selectedTask && showContextToolbar" 
+        class="context-toolbar"
+        :style="contextToolbarPosition"
+      >
+        <div class="toolbar-button" @click="linkTasks" title="创建依赖">
+          🔗
+        </div>
+        <div class="toolbar-button" @click="showAlignOptions = !showAlignOptions" title="对齐">
+          〢
+        </div>
+        <div class="toolbar-button" @click="generateSubtasksForSelected" title="AI子任务">
+          🧩
+        </div>
+        <div class="toolbar-button delete" @click="deleteSelectedTask" title="删除">
+          🗑
+        </div>
+        
+        <!-- Align Options Dropdown -->
+        <div v-if="showAlignOptions" class="align-dropdown">
+          <div class="align-option" @click="alignNodes('left')">左对齐</div>
+          <div class="align-option" @click="alignNodes('center')">居中</div>
+          <div class="align-option" @click="alignNodes('right')">右对齐</div>
+        </div>
+      </div>
+      
+      <!-- Floating Action Buttons -->
+      <div class="fab-container">
+        <!-- Main FAB -->
+        <div 
+          class="fab-main" 
+          :class="{ 'fab-expanded': fabExpanded }"
+          @click="toggleFab"
+        >
+          <div class="fab-icon">
+            <span v-if="!fabExpanded">+</span>
+            <span v-else>×</span>
+          </div>
+        </div>
+        
+        <!-- Sub FABs -->
+        <transition-group name="fab-sub" tag="div" class="fab-sub-container">
+          <div 
+            v-if="fabExpanded"
+            v-for="(action, index) in fabActions"
+            :key="action.key"
+            class="fab-sub"
+            :style="getFabSubPosition(index)"
+            @click="executeFabAction(action)"
+            :title="action.title"
+          >
+            <div class="fab-sub-icon">{{ action.icon }}</div>
+            <div class="fab-sub-label">{{ action.label }}</div>
+          </div>
+        </transition-group>
+        
+        <!-- View Switcher FAB -->
+        <div 
+          class="fab-view-switcher" 
+          @click="switchView"
+          :title="getViewSwitcherTitle()"
+        >
+          <div class="fab-icon">{{ getCurrentViewIcon() }}</div>
+        </div>
+      </div>
+      
+      <!-- Insight Drawer Trigger -->
+      <div class="insight-trigger" @click="toggleInsightDrawer">
+        <div class="insight-icon">📈</div>
+        <div class="insight-label">Insights</div>
+      </div>
+      
+      <!-- Insight Drawer -->
+      <div 
+        class="insight-drawer"
+        :class="{ 'drawer-open': insightDrawerOpen }"
+      >
+        <div class="drawer-header">
+          <h3>Insights</h3>
+          <button class="drawer-close" @click="insightDrawerOpen = false">×</button>
+        </div>
+        
+        <div class="drawer-tabs">
+          <div 
+            class="drawer-tab"
+            :class="{ active: activeInsightTab === 'workload' }"
+            @click="activeInsightTab = 'workload'"
+          >
+            Workload
+          </div>
+          <div 
+            class="drawer-tab"
+            :class="{ active: activeInsightTab === 'risk' }"
+            @click="activeInsightTab = 'risk'"
+          >
+            Risk
+          </div>
+          <div 
+            class="drawer-tab"
+            :class="{ active: activeInsightTab === 'debug' }"
+            @click="activeInsightTab = 'debug'"
+            v-if="advancedSettings.showDebugInfo"
+          >
+            Debug
+          </div>
+        </div>
+        
+        <div class="drawer-content">
+          <!-- Workload Tab -->
+          <div v-if="activeInsightTab === 'workload'" class="insight-content">
+            <div v-if="workloadAnalysis" class="workload-summary">
+              <div class="stat-item">
+                <span class="stat-label">总工时:</span>
+                <span class="stat-value">{{ workloadAnalysis.total_hours }}小时</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">负载率:</span>
+                <span class="stat-value" :class="getWorkloadColor(workloadAnalysis.workload_percentage)">
+                  {{ Math.round(workloadAnalysis.workload_percentage) }}%
+                </span>
+              </div>
+            </div>
+            <button class="refresh-btn" @click="refreshWorkloadAnalysis">刷新分析</button>
+          </div>
+          
+          <!-- Risk Tab -->
+          <div v-if="activeInsightTab === 'risk'" class="insight-content">
+            <button class="analyze-btn" @click="analyzeRisks">分析风险</button>
+            <div class="risk-toggle">
+              <label>
+                <input type="checkbox" v-model="showRiskRadar" />
+                显示风险雷达
+              </label>
+            </div>
+          </div>
+          
+          <!-- Debug Tab -->
+          <div v-if="activeInsightTab === 'debug' && advancedSettings.showDebugInfo" class="insight-content">
+            <DebugTaskList :tasks="taskStore.tasks" />
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Task Details Popup -->
@@ -182,29 +268,29 @@
     />
 
     <!-- Quick Add Dialog -->
-    <el-dialog v-model="showQuickAdd" title="Quick Add Task" width="500px">
+    <el-dialog v-model="showQuickAdd" title="快速添加任务" width="500px">
       <el-form>
-        <el-form-item label="Title">
-          <el-input v-model="newTask.title" placeholder="Task title" />
+        <el-form-item label="标题">
+          <el-input v-model="newTask.title" placeholder="任务标题" />
         </el-form-item>
-        <el-form-item label="Description">
+        <el-form-item label="描述">
           <el-input 
             v-model="newTask.description" 
             type="textarea" 
             :rows="3"
-            placeholder="Task description"
+            placeholder="任务描述"
           />
         </el-form-item>
-        <el-form-item label="Priority">
+        <el-form-item label="优先级">
           <el-select v-model="newTask.urgency" class="w-full">
-            <el-option label="P0 - Critical" :value="0" />
-            <el-option label="P1 - High" :value="1" />
-            <el-option label="P2 - Medium" :value="2" />
-            <el-option label="P3 - Low" :value="3" />
-            <el-option label="P4 - Backlog" :value="4" />
+            <el-option label="P0 - 紧急" :value="0" />
+            <el-option label="P1 - 高" :value="1" />
+            <el-option label="P2 - 中" :value="2" />
+            <el-option label="P3 - 低" :value="3" />
+            <el-option label="P4 - 待办" :value="4" />
           </el-select>
         </el-form-item>
-        <el-form-item label="Module">
+        <el-form-item label="模块">
           <el-select v-model="newTask.module_id" class="w-full" clearable>
             <el-option
               v-for="module in taskStore.modules"
@@ -217,25 +303,25 @@
       </el-form>
       
       <template #footer>
-        <el-button @click="showQuickAdd = false">Cancel</el-button>
-        <el-button type="primary" @click="createQuickTask">Create Task</el-button>
+        <el-button @click="showQuickAdd = false">取消</el-button>
+        <el-button type="primary" @click="createQuickTask">创建任务</el-button>
       </template>
     </el-dialog>
 
     <!-- New Module Dialog -->
-    <el-dialog v-model="showNewModule" title="New Module" width="400px">
+    <el-dialog v-model="showNewModule" title="新建模块" width="400px">
       <el-form>
-        <el-form-item label="Name">
-          <el-input v-model="newModule.name" placeholder="Module name" />
+        <el-form-item label="名称">
+          <el-input v-model="newModule.name" placeholder="模块名称" />
         </el-form-item>
-        <el-form-item label="Color">
+        <el-form-item label="颜色">
           <el-color-picker v-model="newModule.color" />
         </el-form-item>
       </el-form>
       
       <template #footer>
-        <el-button @click="showNewModule = false">Cancel</el-button>
-        <el-button type="primary" @click="createModule">Create Module</el-button>
+        <el-button @click="showNewModule = false">取消</el-button>
+        <el-button type="primary" @click="createModule">创建模块</el-button>
       </template>
     </el-dialog>
 
@@ -317,6 +403,80 @@
       </template>
     </el-dialog>
 
+    <!-- Backup Dialog -->
+    <el-dialog v-model="showBackupDialog" title="备份管理" width="600px">
+      <el-tabs>
+        <el-tab-pane label="手动备份" name="manual">
+          <el-form label-position="top">
+            <el-form-item label="备份状态">
+              <div class="backup-status">
+                <el-alert
+                  v-if="backupStatus"
+                  :title="backupStatus"
+                  type="info"
+                  :closable="false"
+                  style="margin-bottom: 16px;"
+                />
+                <el-button 
+                  @click="createManualBackup" 
+                  type="primary" 
+                  :loading="loading"
+                  style="width: 100%;"
+                >
+                  立即创建备份
+                </el-button>
+              </div>
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+        
+        <el-tab-pane label="备份历史" name="history">
+          <div class="backup-history">
+            <el-button @click="loadBackupHistory" size="small" style="margin-bottom: 16px;">
+              刷新历史
+            </el-button>
+            <div v-if="backupHistory.length === 0" class="empty-history">
+              <p>暂无备份历史</p>
+            </div>
+            <div v-else class="history-list">
+              <div 
+                v-for="backup in backupHistory" 
+                :key="backup.filename"
+                class="history-item"
+              >
+                <div class="backup-info">
+                  <strong>{{ backup.filename }}</strong>
+                  <p class="backup-date">{{ backup.created_at || '未知日期' }}</p>
+                </div>
+                <div class="backup-actions">
+                  <el-button size="small" @click="downloadBackup(backup.filename)">
+                    下载
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-tab-pane>
+        
+        <el-tab-pane label="自动备份" name="auto">
+          <el-form label-position="top">
+            <el-form-item label="自动备份设置">
+              <el-checkbox v-model="settingsStore.autoBackup" @change="settingsStore.toggleAutoBackup">
+                启用自动备份
+              </el-checkbox>
+              <small style="display: block; margin-top: 8px; color: var(--text-muted);">
+                自动备份将在后台定期执行
+              </small>
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+      </el-tabs>
+      
+      <template #footer>
+        <el-button @click="showBackupDialog = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
     <!-- Settings Dialog -->
     <el-dialog v-model="showSettings" title="设置" width="600px">
       <el-tabs>
@@ -350,6 +510,40 @@
               />
               <small>用于从文本中AI智能解析任务</small>
             </el-form-item>
+            
+            <el-form-item label="AI功能启用">
+              <div class="ai-features-list">
+                <el-checkbox v-model="aiFeatures.textParsing">
+                  智能文本解析
+                </el-checkbox>
+                <small>从纯文本中自动识别和创建任务</small>
+                
+                <el-checkbox v-model="aiFeatures.subtaskGeneration">
+                  子任务生成
+                </el-checkbox>
+                <small>为复杂任务自动生成子任务</small>
+                
+                <el-checkbox v-model="aiFeatures.similarityDetection">
+                  相似任务检测
+                </el-checkbox>
+                <small>创建任务时检测已有的相似任务</small>
+                
+                <el-checkbox v-model="aiFeatures.weeklyReports">
+                  周报生成
+                </el-checkbox>
+                <small>自动生成工作周报</small>
+                
+                <el-checkbox v-model="aiFeatures.riskAnalysis">
+                  风险分析
+                </el-checkbox>
+                <small>分析任务风险并提供建议</small>
+                
+                <el-checkbox v-model="aiFeatures.themeIslands">
+                  主题岛聚类
+                </el-checkbox>
+                <small>基于主题自动分组相关任务</small>
+              </div>
+            </el-form-item>
           </el-form>
         </el-tab-pane>
         
@@ -371,6 +565,95 @@
               <el-checkbox v-model="settingsStore.autoSave" @change="settingsStore.toggleAutoSave">
                 自动保存
               </el-checkbox>
+            </el-form-item>
+            
+            <el-form-item>
+              <el-checkbox v-model="settingsStore.autoBackup" @change="settingsStore.toggleAutoBackup">
+                自动备份
+              </el-checkbox>
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+        
+        <el-tab-pane label="数据管理" name="data">
+          <el-form label-position="top">
+            <el-form-item label="导出设置">
+              <div class="export-options">
+                <el-checkbox v-model="exportOptions.includeHistory">
+                  包含历史记录
+                </el-checkbox>
+                <el-checkbox v-model="exportOptions.includeDependencies">
+                  包含任务依赖关系
+                </el-checkbox>
+                <el-checkbox v-model="exportOptions.includeModules">
+                  包含模块信息
+                </el-checkbox>
+              </div>
+            </el-form-item>
+            
+            <el-form-item label="数据统计">
+              <div class="data-stats">
+                <div class="stat-item">
+                  <span class="stat-label">总任务数:</span>
+                  <span class="stat-value">{{ taskStore.tasks.length }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">模块数:</span>
+                  <span class="stat-value">{{ taskStore.modules.length }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">依赖关系:</span>
+                  <span class="stat-value">{{ taskStore.dependencies.length }}</span>
+                </div>
+              </div>
+            </el-form-item>
+            
+            <el-form-item label="操作">
+              <div class="data-actions">
+                <el-button @click="exportTasks" type="primary" size="small">
+                  导出数据
+                </el-button>
+                <el-button @click="showBackupDialog = true" size="small">
+                  备份管理
+                </el-button>
+                <el-button @click="clearCache" size="small" type="warning">
+                  清除缓存
+                </el-button>
+              </div>
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+        
+        <el-tab-pane label="高级" name="advanced">
+          <el-form label-position="top">
+            <el-form-item label="性能优化">
+              <el-checkbox v-model="advancedSettings.enableAnimations">
+                启用动画效果
+              </el-checkbox>
+              <el-checkbox v-model="advancedSettings.enableAutoLayout">
+                启用自动布局
+              </el-checkbox>
+              <el-checkbox v-model="advancedSettings.enableKeyboardShortcuts">
+                启用键盘快捷键
+              </el-checkbox>
+            </el-form-item>
+            
+            <el-form-item label="调试">
+              <el-checkbox v-model="advancedSettings.showDebugInfo">
+                显示调试信息
+              </el-checkbox>
+              <el-checkbox v-model="advancedSettings.enableConsoleLogging">
+                启用控制台日志
+              </el-checkbox>
+            </el-form-item>
+            
+            <el-form-item label="实验性功能">
+              <div class="experimental-features">
+                <el-checkbox v-model="advancedSettings.enableBetaFeatures">
+                  启用测试功能
+                </el-checkbox>
+                <small>可能包含不稳定的新功能</small>
+              </div>
             </el-form-item>
           </el-form>
         </el-tab-pane>
@@ -395,19 +678,265 @@
       @view-task="handleViewSimilarTask"
       @link-tasks="handleLinkSimilarTask"
     />
+
+    <!-- Command Palette -->
+    <CommandPalette
+      :visible="showCommandPalette"
+      @close="showCommandPalette = false"
+      @select-task="handleCommandPaletteSelectTask"
+      @select-module="handleCommandPaletteSelectModule"
+      @execute-command="handleCommandPaletteExecuteCommand"
+    />
+
+    <!-- AI Parse Dialog -->
+    <el-dialog v-model="showAIParseDialog" title="AI智能解析" width="600px">
+      <el-form>
+        <el-form-item label="要解析的文本">
+          <el-input 
+            v-model="quickTextInput" 
+            type="textarea" 
+            :rows="8"
+            placeholder="粘贴要解析的文本，AI将自动识别并创建任务..."
+          />
+        </el-form-item>
+      </el-form>
+      
+      <template #footer>
+        <el-button @click="showAIParseDialog = false">取消</el-button>
+        <el-button type="primary" @click="parseQuickTextInput" :loading="taskStore.loading">
+          解析任务
+        </el-button>
+      </template>
+    </el-dialog>
+    
+    <!-- AI Assistant Dialog -->
+    <el-dialog v-model="showAIAssistantDialog" title="AI助手" width="500px">
+      <el-form label-position="top">
+        <el-form-item label="选择功能">
+          <el-select v-model="aiAssistantAction" placeholder="选择AI功能" style="width: 100%;">
+            <el-option label="重写文本" value="rewrite" />
+            <el-option label="添加表情" value="add-emoji" />
+            <el-option label="总结内容" value="summarize" />
+            <el-option label="创建子任务" value="make-subtasks" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="输入内容">
+          <el-input 
+            v-model="aiAssistantContent" 
+            type="textarea" 
+            :rows="4"
+            placeholder="输入需要处理的文本..."
+          />
+        </el-form-item>
+        <el-form-item label="上下文（可选）">
+          <el-input 
+            v-model="aiAssistantContext" 
+            type="textarea" 
+            :rows="2"
+            placeholder="提供额外的上下文信息..."
+          />
+        </el-form-item>
+        <el-form-item v-if="aiAssistantResult" label="结果">
+          <el-input 
+            v-model="aiAssistantResult" 
+            type="textarea" 
+            :rows="6"
+            readonly
+          />
+        </el-form-item>
+      </el-form>
+      
+      <template #footer>
+        <el-button @click="showAIAssistantDialog = false">关闭</el-button>
+        <el-button 
+          type="primary" 
+          @click="executeAIAssistantDialog" 
+          :loading="taskStore.loading"
+          :disabled="!aiAssistantAction || !aiAssistantContent"
+        >
+          执行AI功能
+        </el-button>
+        <el-button 
+          v-if="aiAssistantResult" 
+          @click="copyAIResult" 
+          type="success"
+        >
+          复制结果
+        </el-button>
+      </template>
+    </el-dialog>
+    
+    <!-- Workload Analysis Dialog -->
+    <el-dialog v-model="showWorkloadDialog" title="工作量分析" width="600px">
+      <div v-if="workloadAnalysis" class="workload-analysis">
+        <div class="workload-summary">
+          <div class="summary-item">
+            <span class="label">总工时:</span>
+            <span class="value">{{ workloadAnalysis.total_hours }}小时</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">日容量:</span>
+            <span class="value">{{ workloadAnalysis.capacity_hours }}小时</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">负载率:</span>
+            <span class="value" :class="getWorkloadColor(workloadAnalysis.workload_percentage)">
+              {{ Math.round(workloadAnalysis.workload_percentage) }}%
+            </span>
+          </div>
+        </div>
+        
+        <el-alert 
+          :title="getWorkloadMessage(workloadAnalysis.conflict_level)"
+          :type="getWorkloadAlertType(workloadAnalysis.conflict_level)"
+          :closable="false"
+          style="margin: 16px 0;"
+        />
+        
+        <div v-if="workloadAnalysis.tasks && workloadAnalysis.tasks.length > 0" class="task-breakdown">
+          <h4>任务分解:</h4>
+          <div class="task-list">
+            <div 
+              v-for="task in workloadAnalysis.tasks" 
+              :key="task.id"
+              class="task-item"
+            >
+              <span class="task-title">{{ task.title }}</span>
+              <span class="task-hours">{{ task.estimated_hours }}小时</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <template #footer>
+        <el-button @click="showWorkloadDialog = false">关闭</el-button>
+        <el-button @click="refreshWorkloadAnalysis" :loading="taskStore.loading">
+          刷新分析
+        </el-button>
+      </template>
+    </el-dialog>
+    
+    <!-- Quick Text Dialog -->
+    <el-dialog v-model="showQuickTextDialog" title="快速文本解析" width="500px">
+      <el-form label-position="top">
+        <el-form-item label="文本内容">
+          <el-input 
+            v-model="quickTextInput" 
+            type="textarea" 
+            :rows="6"
+            placeholder="粘贴文本内容，AI将自动解析为任务..."
+            @keydown.ctrl.enter="parseQuickTextInput"
+            @keydown.meta.enter="parseQuickTextInput"
+          />
+        </el-form-item>
+      </el-form>
+      
+      <template #footer>
+        <el-button @click="showQuickTextDialog = false">取消</el-button>
+        <el-button 
+          type="primary" 
+          @click="parseQuickTextInput" 
+          :loading="taskStore.loading"
+          :disabled="!quickTextInput.trim()"
+        >
+          AI解析任务
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- Enhanced Export Dialog -->
+    <el-dialog v-model="showExportDialog" title="导出数据" width="600px">
+      <el-form label-position="top">
+        <el-form-item label="导出格式">
+          <el-select v-model="exportFormat" style="width: 100%;">
+            <el-option label="JSON - 结构化数据" value="json" />
+            <el-option label="Markdown - 文档格式" value="markdown" />
+            <el-option label="CSV - 表格数据" value="csv" />
+            <el-option label="Excel - 电子表格" value="excel" />
+            <el-option label="PDF - 报告文档" value="pdf" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="筛选条件">
+          <div class="export-filters">
+            <el-select 
+              v-model="exportFilterModule" 
+              placeholder="按模块筛选（可选）"
+              clearable
+              style="width: 48%;"
+            >
+              <el-option
+                v-for="module in taskStore.modules"
+                :key="module.id"
+                :label="module.name"
+                :value="module.id"
+              />
+            </el-select>
+            
+            <el-select 
+              v-model="exportFilterPriority" 
+              placeholder="按优先级筛选（可选）"
+              clearable
+              style="width: 48%;"
+            >
+              <el-option label="P0 - 紧急" :value="0" />
+              <el-option label="P1 - 高" :value="1" />
+              <el-option label="P2 - 中" :value="2" />
+              <el-option label="P3 - 低" :value="3" />
+              <el-option label="P4 - 待办" :value="4" />
+            </el-select>
+          </div>
+        </el-form-item>
+        
+        <el-form-item label="包含内容">
+          <div class="export-content-options">
+            <el-checkbox v-model="exportOptions.includeHistory">
+              历史记录
+            </el-checkbox>
+            <el-checkbox v-model="exportOptions.includeDependencies">
+              任务依赖关系
+            </el-checkbox>
+            <el-checkbox v-model="exportOptions.includeModules">
+              模块信息
+            </el-checkbox>
+          </div>
+        </el-form-item>
+        
+        <el-form-item label="预览信息">
+          <div class="export-preview">
+            <div class="preview-item">
+              <span class="preview-label">将导出任务数:</span>
+              <span class="preview-value">{{ getFilteredTaskCount() }}</span>
+            </div>
+            <div class="preview-item">
+              <span class="preview-label">预计文件大小:</span>
+              <span class="preview-value">{{ getEstimatedFileSize() }}</span>
+            </div>
+          </div>
+        </el-form-item>
+      </el-form>
+      
+      <template #footer>
+        <el-button @click="showExportDialog = false">取消</el-button>
+        <el-button type="primary" @click="executeExport" :loading="taskStore.loading">
+          导出文件
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { ElButton, ElInput, ElUpload, ElDialog, ElForm, ElFormItem, ElSelect, ElOption, ElTag, ElIcon, ElColorPicker, ElMessage, ElMessageBox, ElTabs, ElTabPane, ElRadioGroup, ElRadio, ElCheckbox, ElInputNumber } from 'element-plus'
-import { Download, Setting, UploadFilled, Search } from '@element-plus/icons-vue'
+import { ElButton, ElInput, ElUpload, ElDialog, ElForm, ElFormItem, ElSelect, ElOption, ElTag, ElIcon, ElColorPicker, ElMessage, ElMessageBox, ElTabs, ElTabPane, ElRadioGroup, ElRadio, ElCheckbox, ElInputNumber, ElDropdown, ElDropdownMenu, ElDropdownItem, ElAlert } from 'element-plus'
+import { Download, Setting, UploadFilled, Search, Menu, Grid, CollectionTag, Plus, Rank, Close, Lightning, MagicStick, Picture, Inbox, Check, CircleCheck, FolderOpened, Edit, Delete, ArrowDown } from '@element-plus/icons-vue'
 import StickyCanvas from '@/components/StickyCanvas.vue'
 import TaskDetailsPopup from '@/components/TaskDetailsPopup.vue'
 import DebugTaskList from '@/components/DebugTaskList.vue'
 import WorkloadSidebar from '@/components/WorkloadSidebar.vue'
 import SimilarTaskDialog from '@/components/SimilarTaskDialog.vue'
 import RiskRadar from '@/components/RiskRadar.vue'
+import CommandPalette from '@/components/CommandPalette.vue'
 import { useTaskStore, type Task } from '@/stores/tasks'
 import { useSettingsStore } from '@/stores/settings'
 import { useKeyboard } from '@/composables/useKeyboard'
@@ -435,6 +964,96 @@ const pendingTask = ref<Partial<Task> | null>(null)
 const islandViewEnabled = ref(false)
 const themeIslands = ref<any[]>([])
 const islandViewLoading = ref(false)
+const showCommandPalette = ref(false)
+const showAIAssistantDialog = ref(false)
+const showAIParseDialog = ref(false)
+const showWorkloadDialog = ref(false)
+const aiAssistantAction = ref('')
+const aiAssistantContent = ref('')
+const aiAssistantContext = ref('')
+const aiAssistantResult = ref('')
+const workloadAnalysis = ref<any>(null)
+
+// Modern UI State
+const fabExpanded = ref(false)
+const showContextToolbar = ref(false)
+const contextToolbarPosition = ref({ top: '0px', left: '0px' })
+const showAlignOptions = ref(false)
+const insightDrawerOpen = ref(false)
+const activeInsightTab = ref('workload')
+const currentView = ref('canvas') // canvas, timeline, island
+const showRiskRadar = ref(false)
+
+// Timeline View State
+const timelineFilter = ref('all') // all, pending, completed
+
+// FAB Actions Configuration
+const fabActions = ref([
+  {
+    key: 'add-task',
+    icon: '📝',
+    label: '添加任务',
+    title: '快速添加任务',
+    action: () => showQuickAdd.value = true
+  },
+  {
+    key: 'upload-image',
+    icon: '📷',
+    label: '上传图片',
+    title: '上传图片进行OCR识别',
+    action: () => triggerImageUpload()
+  },
+  {
+    key: 'quick-note',
+    icon: '✏️',
+    label: '快速笔记',
+    title: '快速文本输入',
+    action: () => showQuickTextDialog.value = true
+  },
+  {
+    key: 'settings',
+    icon: '⚙️',
+    label: '设置',
+    title: '应用设置',
+    action: () => showSettings.value = true
+  }
+])
+const showBackupDialog = ref(false)
+const showQuickTextDialog = ref(false)
+const quickTextInput = ref('')
+const showExportDialog = ref(false)
+const exportFormat = ref('json')
+const exportFilterModule = ref<number | null>(null)
+const exportFilterPriority = ref<number | null>(null)
+const backupStatus = ref('')
+const backupHistory = ref<any[]>([])
+
+// AI Features settings
+const aiFeatures = ref({
+  textParsing: true,
+  subtaskGeneration: true,
+  similarityDetection: true,
+  weeklyReports: true,
+  riskAnalysis: true,
+  themeIslands: true
+})
+
+// Export options
+const exportOptions = ref({
+  includeHistory: true,
+  includeDependencies: true,
+  includeModules: true
+})
+
+// Advanced settings
+const advancedSettings = ref({
+  enableAnimations: true,
+  enableAutoLayout: true,
+  enableKeyboardShortcuts: true,
+  showDebugInfo: false,
+  enableConsoleLogging: false,
+  enableBetaFeatures: false
+})
 
 const newTask = ref({
   title: '',
@@ -451,10 +1070,13 @@ const newModule = ref({
 const showAutoArrangeDialog = ref(false)
 
 // Methods
-function handleTaskSelect(task: Task | null) {
-  selectedTask.value = task
-  taskStore.selectTask(task)
+function handleQuickTextKeydown(event: KeyboardEvent) {
+  if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+    event.preventDefault()
+    parseQuickText()
+  }
 }
+
 
 function handleOpenTaskDetails(task: Task, position: { x: number, y: number }) {
   detailsTask.value = task
@@ -474,9 +1096,9 @@ async function parseQuickText() {
     const parsedTasks = await taskStore.parseTasksFromText(quickText.value)
     taskInbox.value = [...taskInbox.value, ...parsedTasks]
     quickText.value = ''
-    ElMessage.success(`Parsed ${parsedTasks.length} tasks`)
+    ElMessage.success(`已解析 ${parsedTasks.length} 个任务`)
   } catch (error) {
-    ElMessage.error('Failed to parse tasks')
+    ElMessage.error('任务解析失败')
   }
 }
 
@@ -484,9 +1106,9 @@ async function handleImageUpload(file: any) {
   try {
     const text = await taskStore.extractTextFromImage(file.raw)
     quickText.value = text
-    ElMessage.success('Text extracted from image')
+    ElMessage.success('已从图片中提取文本')
   } catch (error) {
-    ElMessage.error('Failed to extract text from image')
+    ElMessage.error('从图片提取文本失败')
   }
 }
 
@@ -495,7 +1117,7 @@ async function createTaskFromInbox(task: Partial<Task>) {
     // Check for similar tasks before creating
     await checkSimilarTasksBeforeCreate(task)
   } catch (error) {
-    ElMessage.error('Failed to create task')
+    ElMessage.error('创建任务失败')
   }
 }
 
@@ -549,9 +1171,9 @@ async function createAllFromInbox() {
       await taskStore.createTask(task)
     }
     taskInbox.value = []
-    ElMessage.success('All tasks created')
+    ElMessage.success('所有任务已创建')
   } catch (error) {
-    ElMessage.error('Failed to create some tasks')
+    ElMessage.error('部分任务创建失败')
   }
 }
 
@@ -666,20 +1288,71 @@ async function createModule() {
       color: '#FFE58F'
     }
     showNewModule.value = false
-    ElMessage.success('Module created')
+    ElMessage.success('模块已创建')
   } catch (error) {
-    ElMessage.error('Failed to create module')
+    ElMessage.error('模块创建失败')
   }
 }
 
-function saveSettings() {
-  settingsStore.saveSettings()
-  showSettings.value = false
-  ElMessage.success('Settings saved')
+async function saveSettings() {
+  try {
+    // Save additional settings to localStorage
+    const additionalSettings = {
+      aiFeatures: aiFeatures.value,
+      exportOptions: exportOptions.value,
+      advancedSettings: advancedSettings.value
+    }
+    localStorage.setItem('taskwall-additional-settings', JSON.stringify(additionalSettings))
+    
+    // Save settings to local storage
+    settingsStore.saveSettings()
+    
+    // Save Gemini API key to backend if provided
+    if (settingsStore.geminiApiKey && settingsStore.geminiApiKey.trim()) {
+      await fetch('/api/settings/gemini_api_key', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          value: settingsStore.geminiApiKey
+        })
+      })
+      console.log('Gemini API key saved to backend')
+    }
+    
+    showSettings.value = false
+    ElMessage.success('设置已保存')
+  } catch (error) {
+    console.error('Failed to save settings:', error)
+    ElMessage.error('设置保存失败')
+  }
+}
+
+function clearCache() {
+  localStorage.removeItem('taskwall-settings')
+  localStorage.removeItem('taskwall-additional-settings')
+  ElMessage.success('缓存已清除，页面将在3秒后刷新')
+  setTimeout(() => {
+    window.location.reload()
+  }, 3000)
 }
 
 function loadSettings() {
   settingsStore.loadSettings()
+  
+  // Load additional settings
+  try {
+    const saved = localStorage.getItem('taskwall-additional-settings')
+    if (saved) {
+      const settings = JSON.parse(saved)
+      aiFeatures.value = { ...aiFeatures.value, ...settings.aiFeatures }
+      exportOptions.value = { ...exportOptions.value, ...settings.exportOptions }
+      advancedSettings.value = { ...advancedSettings.value, ...settings.advancedSettings }
+    }
+  } catch (error) {
+    console.warn('Failed to load additional settings:', error)
+  }
 }
 
 function triggerAutoArrange() {
@@ -754,6 +1427,98 @@ function focusSearch() {
   }
 }
 
+// Command Palette handlers
+function handleCommandPaletteSelectTask(task: Task) {
+  handleTaskSelect(task)
+  if (stickyCanvasRef.value) {
+    stickyCanvasRef.value.focusOnTask(task.id)
+  }
+}
+
+function handleCommandPaletteSelectModule(module: any) {
+  // Filter tasks by module and focus on the first one
+  const moduleTasks = taskStore.tasks.filter(task => task.module_id === module.id)
+  if (moduleTasks.length > 0) {
+    handleTaskSelect(moduleTasks[0])
+    if (stickyCanvasRef.value) {
+      stickyCanvasRef.value.focusOnTask(moduleTasks[0].id)
+    }
+  }
+}
+
+function handleCommandPaletteExecuteCommand(command: any) {
+  switch (command.name) {
+    case 'newTask':
+      showQuickAdd.value = true
+      break
+    case 'newModule':
+      showNewModule.value = true
+      break
+    case 'autoArrange':
+      triggerAutoArrange()
+      break
+    case 'export':
+      exportTasks()
+      break
+    case 'settings':
+      showSettings.value = true
+      break
+    case 'toggleIsland':
+      toggleIslandView()
+      break
+    case 'canvasView':
+      currentView.value = 'canvas'
+      break
+    case 'timelineView':
+      currentView.value = 'timeline'
+      break
+    case 'weeklyReport':
+      generateWeeklyReport()
+      break
+    case 'riskAnalysis':
+      analyzeRisks()
+      break
+    case 'workloadAnalysis':
+      refreshWorkloadAnalysis()
+      break
+    case 'resetZoom':
+      settingsStore.resetZoom()
+      break
+    case 'zoomIn':
+      settingsStore.zoomIn()
+      break
+    case 'zoomOut':
+      settingsStore.zoomOut()
+      break
+    case 'selectAll':
+      selectAllTasks()
+      break
+    case 'toggleGrid':
+      settingsStore.toggleGrid()
+      break
+    case 'toggleSidebar':
+      settingsStore.toggleSidebar()
+      break
+    case 'backup':
+      backupData()
+      break
+    case 'aiParse':
+      showAIParseDialog.value = true
+      break
+    case 'search':
+      showCommandPalette.value = true
+      break
+    case 'focusLatest':
+      if (stickyCanvasRef.value) {
+        stickyCanvasRef.value.focusOnLatestTask()
+        ElMessage.success('已定位到最新任务')
+      }
+      break
+    default:
+      console.warn('Unknown command:', command.name)
+  }
+}
+
 async function generateWeeklyReport() {
   try {
     const response = await fetch('/api/ai/weekly-report', {
@@ -778,13 +1543,13 @@ async function generateWeeklyReport() {
       a.click()
       URL.revokeObjectURL(url)
       
-      ElMessage.success('Weekly report generated and downloaded!')
+      ElMessage.success('周报已生成并下载！')
     } else {
       throw new Error(result.error || 'Failed to generate report')
     }
   } catch (error) {
     console.error('Weekly report generation failed:', error)
-    ElMessage.error('Failed to generate weekly report')
+    ElMessage.error('周报生成失败')
   }
 }
 
@@ -795,6 +1560,10 @@ async function toggleIslandView() {
     await loadThemeIslands()
   } else {
     themeIslands.value = []
+    // Exit island view in canvas
+    if (stickyCanvasRef.value) {
+      stickyCanvasRef.value.exitIslandView()
+    }
   }
 }
 
@@ -833,45 +1602,153 @@ async function loadThemeIslands() {
 }
 
 async function exportTasks() {
+  showExportDialog.value = true
+}
+
+async function executeExport() {
   try {
-    // Show export options dialog
-    await ElMessageBox({
-      title: 'Export Format',
-      message: 'Choose export format:',
-      showCancelButton: true,
-      confirmButtonText: 'JSON',
-      cancelButtonText: 'Markdown',
-      distinguishCancelAndClose: true
-    }).then(async () => {
-      // Export as JSON
-      const response = await fetch('/api/export/json')
+    let endpoint = '/api/export/json'
+    let mimeType = 'application/json'
+    let fileExtension = 'json'
+    
+    // Determine export format and endpoint
+    switch (exportFormat.value) {
+      case 'markdown':
+        endpoint = '/api/export/markdown'
+        mimeType = 'text/markdown'
+        fileExtension = 'md'
+        break
+      case 'csv':
+        endpoint = '/api/export/csv'
+        mimeType = 'text/csv'
+        fileExtension = 'csv'
+        break
+      case 'excel':
+        endpoint = '/api/export/excel'
+        mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        fileExtension = 'xlsx'
+        break
+      case 'pdf':
+        endpoint = '/api/export/pdf'
+        mimeType = 'application/pdf'
+        fileExtension = 'pdf'
+        break
+      default: // JSON
+        break
+    }
+    
+    // Build query parameters based on export options
+    const params = new URLSearchParams()
+    if (!exportOptions.value.includeHistory) params.append('exclude_history', 'true')
+    if (!exportOptions.value.includeDependencies) params.append('exclude_dependencies', 'true')
+    if (!exportOptions.value.includeModules) params.append('exclude_modules', 'true')
+    if (exportFilterModule.value) params.append('module_id', exportFilterModule.value.toString())
+    if (exportFilterPriority.value !== null) params.append('priority', exportFilterPriority.value.toString())
+    
+    const fullEndpoint = params.toString() ? `${endpoint}?${params.toString()}` : endpoint
+    
+    const response = await fetch(fullEndpoint)
+    
+    if (!response.ok) {
+      throw new Error(`Export failed with status ${response.status}`)
+    }
+    
+    let blob: Blob
+    let filename: string
+    
+    if (exportFormat.value === 'json') {
       const data = await response.json()
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `taskwall-export-${new Date().toISOString().split('T')[0]}.json`
-      a.click()
-      URL.revokeObjectURL(url)
-      ElMessage.success('Tasks exported as JSON')
-    }).catch(async (action) => {
-      if (action === 'cancel') {
-        // Export as Markdown
-        const response = await fetch('/api/export/markdown')
-        const result = await response.json()
-        const blob = new Blob([result.content], { type: 'text/markdown' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = result.filename
-        a.click()
-        URL.revokeObjectURL(url)
-        ElMessage.success('Tasks exported as Markdown')
-      }
-    })
+      blob = new Blob([JSON.stringify(data, null, 2)], { type: mimeType })
+      filename = `taskwall-export-${new Date().toISOString().split('T')[0]}.${fileExtension}`
+    } else if (exportFormat.value === 'markdown') {
+      const result = await response.json()
+      blob = new Blob([result.content], { type: mimeType })
+      filename = result.filename || `taskwall-export-${new Date().toISOString().split('T')[0]}.${fileExtension}`
+    } else {
+      // For binary formats (Excel, PDF) or text formats (CSV)
+      blob = await response.blob()
+      filename = `taskwall-export-${new Date().toISOString().split('T')[0]}.${fileExtension}`
+    }
+    
+    // Download file
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+    
+    showExportDialog.value = false
+    ElMessage.success(`任务已导出为${exportFormat.value.toUpperCase()}格式`)
   } catch (error) {
     console.error('Export failed:', error)
-    ElMessage.error('Export failed')
+    ElMessage.error('导出失败')
+  }
+}
+
+// Backup management functions
+async function createManualBackup() {
+  try {
+    backupStatus.value = '正在创建备份...'
+    const response = await fetch('/api/backup/manual', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    const result = await response.json()
+    
+    if (result.success) {
+      backupStatus.value = `备份创建成功: ${result.filename}`
+      ElMessage.success('手动备份创建成功！')
+      // Refresh backup history
+      await loadBackupHistory()
+    } else {
+      throw new Error(result.error || 'Backup failed')
+    }
+  } catch (error) {
+    console.error('Manual backup failed:', error)
+    backupStatus.value = '备份创建失败'
+    ElMessage.error('手动备份创建失败')
+  }
+}
+
+async function loadBackupHistory() {
+  try {
+    const response = await fetch('/api/backup/list')
+    const result = await response.json()
+    
+    if (result.success) {
+      backupHistory.value = result.backups || []
+    } else {
+      throw new Error(result.error || 'Failed to load backup history')
+    }
+  } catch (error) {
+    console.error('Failed to load backup history:', error)
+    ElMessage.error('加载备份历史失败')
+  }
+}
+
+async function downloadBackup(filename: string) {
+  try {
+    const response = await fetch(`/api/backup/download/${filename}`)
+    if (!response.ok) {
+      throw new Error('Download failed')
+    }
+    
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+    
+    ElMessage.success('备份下载成功')
+  } catch (error) {
+    console.error('Backup download failed:', error)
+    ElMessage.error('备份下载失败')
   }
 }
 
@@ -911,6 +1788,11 @@ useKeyboard([
     shortcut: 'search',
     action: () => focusSearch(),
     description: '全局搜索任务'
+  },
+  {
+    shortcut: 'commandPalette',
+    action: () => { showCommandPalette.value = true },
+    description: 'Command Palette 全局搜索'
   }
 ])
 
@@ -932,11 +1814,669 @@ onMounted(async () => {
   
   // Create default module if none exist
   if (taskStore.modules.length === 0) {
-    await taskStore.createModule({ name: 'General', color: '#FFE58F' })
+    await taskStore.createModule({ name: '通用', color: '#FFE58F' })
   }
   
+  // Load backup history on startup
+  await loadBackupHistory()
+  
   console.log('Home: All data loaded, final tasks count:', taskStore.tasks.length)
+  
+  // Load initial workload analysis
+  await refreshWorkloadAnalysis()
+  
+  // Setup keyboard shortcuts
+  setupKeyboardShortcuts()
 })
+
+// Modern UI Functions
+function toggleFab() {
+  fabExpanded.value = !fabExpanded.value
+}
+
+function executeFabAction(action: any) {
+  action.action()
+  fabExpanded.value = false
+}
+
+function getFabSubPosition(index: number) {
+  const angle = (index * 45) - 90 // Start from top and spread in 45° increments
+  const radius = 80
+  const x = Math.cos(angle * Math.PI / 180) * radius
+  const y = Math.sin(angle * Math.PI / 180) * radius
+  
+  return {
+    transform: `translate(${x}px, ${y}px)`,
+    transitionDelay: `${index * 50}ms`
+  }
+}
+
+function triggerImageUpload() {
+  // Create a hidden file input
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'image/*'
+  input.onchange = (e) => {
+    const file = (e.target as HTMLInputElement).files?.[0]
+    if (file) {
+      handleImageUpload({ raw: file })
+    }
+  }
+  input.click()
+}
+
+// View Switcher Functions
+function switchView() {
+  const views = ['canvas', 'timeline', 'island']
+  const currentIndex = views.indexOf(currentView.value)
+  const nextIndex = (currentIndex + 1) % views.length
+  currentView.value = views[nextIndex]
+  
+  // Execute view switching logic
+  switch (currentView.value) {
+    case 'canvas':
+      // Default canvas view
+      break
+    case 'timeline':
+      // Timeline view is now implemented
+      break
+    case 'island':
+      toggleIslandView()
+      break
+  }
+}
+
+function getCurrentViewIcon() {
+  switch (currentView.value) {
+    case 'canvas': return '🗺️'
+    case 'timeline': return '📅'
+    case 'island': return '🏝️'
+    default: return '🗺️'
+  }
+}
+
+function getViewSwitcherTitle() {
+  switch (currentView.value) {
+    case 'canvas': return '切换到时间线视图'
+    case 'timeline': return '切换到主题岛视图'
+    case 'island': return '切换到画布视图'
+    default: return '切换视图'
+  }
+}
+
+// Timeline View Functions
+const filteredTimelineTasks = computed(() => {
+  let tasks = [...taskStore.tasks].sort((a, b) => {
+    const dateA = new Date(a.updated_at || a.created_at || 0).getTime()
+    const dateB = new Date(b.updated_at || b.created_at || 0).getTime()
+    return dateB - dateA // 最新的在上面
+  })
+  
+  if (timelineFilter.value !== 'all') {
+    tasks = tasks.filter(task => {
+      switch (timelineFilter.value) {
+        case 'pending':
+          return !task.status || task.status === 'pending' || task.status === 'in_progress'
+        case 'completed':
+          return task.status === 'completed'
+        default:
+          return true
+      }
+    })
+  }
+  
+  return tasks
+})
+
+function getTimelineEmptyMessage() {
+  switch (timelineFilter.value) {
+    case 'pending': return '暂无进行中的任务'
+    case 'completed': return '暂无已完成的任务'
+    default: return '暂无任务'
+  }
+}
+
+function formatTimelineDate(dateStr: string) {
+  if (!dateStr) return '未知时间'
+  
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  
+  if (days === 0) {
+    return '今天 ' + date.toLocaleTimeString('zh-CN', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    })
+  } else if (days === 1) {
+    return '昨天 ' + date.toLocaleTimeString('zh-CN', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    })
+  } else if (days <= 7) {
+    return `${days}天前`
+  } else {
+    return date.toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  }
+}
+
+function getTimelineItemClass(task: any) {
+  const classes = ['timeline-item']
+  
+  if (task.status === 'completed') {
+    classes.push('completed')
+  } else if (task.urgency <= 1) {
+    classes.push('high-priority')
+  }
+  
+  return classes
+}
+
+function handleTimelineTaskClick(task: any) {
+  selectedTask.value = task
+  handleOpenTaskDetails(task)
+}
+
+function getTaskColor(task: any) {
+  if (task.status === 'completed') return '#52c41a'
+  
+  switch (task.urgency) {
+    case 0: return '#ff4d4f' // P0 Critical - Red
+    case 1: return '#fa8c16' // P1 High - Orange  
+    case 2: return '#1890ff' // P2 Medium - Blue
+    case 3: return '#52c41a' // P3 Low - Green
+    case 4: return '#8c8c8c' // P4 Backlog - Gray
+    default: return '#1890ff'
+  }
+}
+
+function getPriorityClass(urgency: number) {
+  switch (urgency) {
+    case 0: return 'priority-critical'
+    case 1: return 'priority-high'
+    case 2: return 'priority-medium'
+    case 3: return 'priority-low'
+    case 4: return 'priority-backlog'
+    default: return 'priority-medium'
+  }
+}
+
+function getPriorityText(urgency: number) {
+  switch (urgency) {
+    case 0: return 'P0'
+    case 1: return 'P1'
+    case 2: return 'P2'
+    case 3: return 'P3'
+    case 4: return 'P4'
+    default: return 'P2'
+  }
+}
+
+function getStatusText(status: string) {
+  switch (status) {
+    case 'pending': return '待处理'
+    case 'in_progress': return '进行中'
+    case 'completed': return '已完成'
+    case 'cancelled': return '已取消'
+    default: return '未知'
+  }
+}
+
+function getModuleName(moduleId: number) {
+  const module = taskStore.modules.find(m => m.id === moduleId)
+  return module ? module.name : '未分类'
+}
+
+// Context Toolbar Functions
+function updateContextToolbar() {
+  if (!selectedTask.value) {
+    showContextToolbar.value = false
+    return
+  }
+  
+  // Position the toolbar above the selected task
+  // This would need integration with StickyCanvas to get actual position
+  showContextToolbar.value = true
+  contextToolbarPosition.value = {
+    top: '100px', // TODO: Calculate based on task position
+    left: '200px'
+  }
+}
+
+function linkTasks() {
+  if (!selectedTask.value) {
+    ElMessage.warning('请先选择一个任务')
+    return
+  }
+  
+  // Enter connection mode
+  ElMessage.info('连线模式已激活，点击另一个任务创建依赖关系')
+  
+  // Trigger connection mode in StickyCanvas
+  if (stickyCanvasRef.value) {
+    stickyCanvasRef.value.enterConnectionMode(selectedTask.value.id)
+  }
+}
+
+function alignNodes(direction: string) {
+  ElMessage.info(`${direction}对齐功能开发中...`)
+  showAlignOptions.value = false
+  // TODO: Implement node alignment
+}
+
+// Quick Text Functions
+async function parseQuickTextInput() {
+  if (!quickTextInput.value.trim()) return
+  
+  try {
+    const parsedTasks = await taskStore.parseTasksFromText(quickTextInput.value)
+    
+    // Add to inbox for review
+    taskInbox.value = [...taskInbox.value, ...parsedTasks]
+    
+    // Clear input and close dialog
+    quickTextInput.value = ''
+    showQuickTextDialog.value = false
+    
+    ElMessage.success(`已解析 ${parsedTasks.length} 个任务到收件箱`)
+    
+    // Show inbox in a notification or mini-panel
+    showInboxNotification(parsedTasks)
+  } catch (error) {
+    ElMessage.error('文本解析失败')
+  }
+}
+
+function showInboxNotification(tasks: any[]) {
+  // Show a temporary notification with parsed tasks
+  ElMessage({
+    message: `解析完成！点击右下角 + 按钮查看收件箱中的 ${tasks.length} 个任务`,
+    type: 'success',
+    duration: 5000,
+    showClose: true
+  })
+}
+
+// Insight Drawer Functions
+function toggleInsightDrawer() {
+  insightDrawerOpen.value = !insightDrawerOpen.value
+}
+
+// Additional Command Functions
+function selectAllTasks() {
+  // Select all visible tasks
+  const visibleTasks = taskStore.tasks
+  selectedTasks.value = visibleTasks.map(task => task.id)
+  ElMessage.success(`已选择 ${visibleTasks.length} 个任务`)
+}
+
+async function backupData() {
+  try {
+    const response = await fetch('/api/backup', { method: 'POST' })
+    if (response.ok) {
+      ElMessage.success('数据备份成功')
+    } else {
+      throw new Error('备份失败')
+    }
+  } catch (error) {
+    ElMessage.error('数据备份失败')
+    console.error('Backup error:', error)
+  }
+}
+
+// Watch for selected task changes
+function handleTaskSelect(task: Task | null) {
+  selectedTask.value = task
+  taskStore.selectTask(task)
+  updateContextToolbar()
+}
+
+// Global Keyboard Shortcuts
+function setupKeyboardShortcuts() {
+  document.addEventListener('keydown', (e) => {
+    // Command Palette
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault()
+      showCommandPalette.value = true
+    }
+    
+    // Quick Add
+    if (e.key === 'q' || e.key === 'Q') {
+      if (!e.target || (e.target as HTMLElement).tagName !== 'INPUT') {
+        e.preventDefault()
+        showQuickAdd.value = true
+      }
+    }
+    
+    // 空格键定位到最新任务
+    if (e.key === ' ' || e.key === 'Space') {
+      // 检查是否在输入框中
+      const target = e.target as HTMLElement
+      if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && !target.contentEditable) {
+        e.preventDefault()
+        if (stickyCanvasRef.value) {
+          stickyCanvasRef.value.focusOnLatestTask()
+          ElMessage.success('已定位到最新任务')
+        }
+      }
+    }
+    
+    // Toggle Insight Drawer
+    if ((e.metaKey || e.ctrlKey) && e.key === 'i') {
+      e.preventDefault()
+      toggleInsightDrawer()
+    }
+    
+    // View Switching
+    if ((e.metaKey || e.ctrlKey) && ['1', '2', '3'].includes(e.key)) {
+      e.preventDefault()
+      const views = ['canvas', 'timeline', 'island']
+      currentView.value = views[parseInt(e.key) - 1]
+    }
+    
+    // ESC to close things
+    if (e.key === 'Escape') {
+      fabExpanded.value = false
+      showAlignOptions.value = false
+      showCommandPalette.value = false
+    }
+  })
+}
+
+// AI Assistant functions
+async function executeAIAssistantDialog() {
+  try {
+    const result = await taskStore.executeAIAssistant(
+      aiAssistantAction.value,
+      aiAssistantContent.value,
+      aiAssistantContext.value
+    )
+    aiAssistantResult.value = result
+    ElMessage.success('AI功能执行成功！')
+  } catch (error) {
+    console.error('AI assistant failed:', error)
+    ElMessage.error('AI功能执行失败')
+  }
+}
+
+function copyAIResult() {
+  navigator.clipboard.writeText(aiAssistantResult.value).then(() => {
+    ElMessage.success('结果已复制到剪贴板')
+  }).catch(() => {
+    ElMessage.error('复制失败')
+  })
+}
+
+// Risk analysis function
+async function analyzeRisks() {
+  try {
+    const response = await fetch('/api/ai/risk-analysis', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        // Use all tasks by default
+      })
+    })
+    
+    const result = await response.json()
+    
+    if (result.success) {
+      // Show risk analysis results
+      const riskMessage = `风险分析完成！\n\n高风险任务: ${result.risky_tasks.length} 个\n\n建议:\n${result.suggestions.join('\n')}`
+      await ElMessageBox.alert(riskMessage, '风险分析结果', {
+        confirmButtonText: '确定',
+        type: 'warning'
+      })
+    } else {
+      throw new Error(result.error || 'Risk analysis failed')
+    }
+  } catch (error) {
+    console.error('Risk analysis failed:', error)
+    ElMessage.error('风险分析失败')
+  }
+}
+
+// Workload analysis functions
+async function showWorkloadAnalysis() {
+  try {
+    await refreshWorkloadAnalysis()
+    showWorkloadDialog.value = true
+  } catch (error) {
+    ElMessage.error('工作量分析加载失败')
+  }
+}
+
+async function refreshWorkloadAnalysis() {
+  try {
+    const response = await fetch('/api/ai/workload-analysis', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        date: new Date().toISOString().split('T')[0]
+      })
+    })
+    
+    const result = await response.json()
+    
+    if (result.success) {
+      workloadAnalysis.value = result
+    } else {
+      throw new Error(result.error || 'Workload analysis failed')
+    }
+  } catch (error) {
+    console.error('Workload analysis failed:', error)
+    ElMessage.error('工作量分析失败')
+  }
+}
+
+function getWorkloadColor(percentage: number): string {
+  if (percentage <= 70) return 'workload-green'
+  if (percentage <= 90) return 'workload-yellow'
+  return 'workload-red'
+}
+
+function getWorkloadMessage(level: string): string {
+  switch (level) {
+    case 'green': return '工作量正常，时间安排合理'
+    case 'yellow': return '工作量较高，建议优化任务安排'
+    case 'red': return '工作量过载，存在时间冲突风险'
+    default: return '工作量分析'
+  }
+}
+
+function getWorkloadAlertType(level: string): string {
+  switch (level) {
+    case 'green': return 'success'
+    case 'yellow': return 'warning'
+    case 'red': return 'error'
+    default: return 'info'
+  }
+}
+
+// Additional functions for new UI
+function toggleLeftDrawer() {
+  leftDrawerVisible.value = !leftDrawerVisible.value
+}
+
+function handleModuleClick(module: any) {
+  // Filter tasks by module and focus on the first one
+  const moduleTasks = taskStore.tasks.filter(task => task.module_id === module.id)
+  if (moduleTasks.length > 0) {
+    handleTaskSelect(moduleTasks[0])
+    if (stickyCanvasRef.value) {
+      stickyCanvasRef.value.focusOnTask(moduleTasks[0].id)
+    }
+  }
+}
+
+function editSelectedTask() {
+  if (selectedTask.value) {
+    // Open task details popup for editing
+    const rect = { left: window.innerWidth / 2, bottom: window.innerHeight / 2 }
+    const position = {
+      x: rect.left,
+      y: rect.bottom + 10
+    }
+    handleOpenTaskDetails(selectedTask.value, position)
+  }
+}
+
+async function generateSubtasksForSelected() {
+  if (selectedTask.value) {
+    try {
+      const subtasks = await taskStore.generateTaskSubtasks(
+        selectedTask.value.title,
+        selectedTask.value.description,
+        5
+      )
+      
+      const createdSubtasks = []
+      
+      // Create all subtasks first
+      for (const subtask of subtasks) {
+        const createdTask = await taskStore.createTask({
+          ...subtask,
+          parent_id: selectedTask.value.id,
+          module_id: selectedTask.value.module_id
+        })
+        createdSubtasks.push(createdTask)
+      }
+      
+      // Create dependencies: parent -> first subtask, and chain subtasks
+      if (createdSubtasks.length > 0) {
+        // Parent depends on first subtask
+        await taskStore.createDependency(selectedTask.value.id, createdSubtasks[0].id)
+        
+        // Chain subtasks (each depends on the previous one)
+        for (let i = 1; i < createdSubtasks.length; i++) {
+          await taskStore.createDependency(createdSubtasks[i - 1].id, createdSubtasks[i].id)
+        }
+      }
+      
+      await taskStore.fetchTasks()
+      await taskStore.fetchDependencies()
+      
+      ElMessage.success(
+        `已为 "${selectedTask.value.title}" 生成 ${subtasks.length} 个子任务并建立依赖关系`
+      )
+    } catch (error) {
+      console.error('Failed to generate subtasks:', error)
+      ElMessage.error('生成子任务失败')
+    }
+  }
+}
+
+async function deleteSelectedTask() {
+  if (selectedTask.value) {
+    try {
+      await ElMessageBox.confirm(
+        '确定要删除这个任务吗？',
+        '删除任务',
+        {
+          confirmButtonText: '删除',
+          cancelButtonText: '取消',
+          type: 'warning',
+        }
+      )
+      
+      await taskStore.deleteTask(selectedTask.value.id)
+      handleTaskSelect(null)
+      ElMessage.success('任务已删除')
+    } catch (error) {
+      if (error !== 'cancel') {
+        console.error('Failed to delete task:', error)
+        ElMessage.error('删除任务失败')
+      }
+    }
+  }
+}
+
+function getPriorityName(urgency: number): string {
+  const names = {
+    0: '紧急',
+    1: '高',
+    2: '中',
+    3: '低',
+    4: '待办'
+  }
+  return names[urgency as keyof typeof names] || '中'
+}
+
+function formatFullDate(date: string): string {
+  return new Date(date).toLocaleString('zh-CN')
+}
+
+// Export helper functions
+function getFilteredTaskCount(): number {
+  let filteredTasks = taskStore.tasks
+  
+  if (exportFilterModule.value) {
+    filteredTasks = filteredTasks.filter(task => task.module_id === exportFilterModule.value)
+  }
+  
+  if (exportFilterPriority.value !== null) {
+    filteredTasks = filteredTasks.filter(task => task.urgency === exportFilterPriority.value)
+  }
+  
+  return filteredTasks.length
+}
+
+function getEstimatedFileSize(): string {
+  const taskCount = getFilteredTaskCount()
+  let estimatedSize = 0
+  
+  // Base task data size estimation
+  estimatedSize += taskCount * 500 // ~500 bytes per task
+  
+  if (exportOptions.value.includeHistory) {
+    estimatedSize += taskCount * 200 // ~200 bytes per history record
+  }
+  
+  if (exportOptions.value.includeDependencies) {
+    estimatedSize += taskStore.dependencies.length * 100 // ~100 bytes per dependency
+  }
+  
+  if (exportOptions.value.includeModules) {
+    estimatedSize += taskStore.modules.length * 150 // ~150 bytes per module
+  }
+  
+  // Format size estimation based on export format
+  switch (exportFormat.value) {
+    case 'json':
+      estimatedSize *= 1.2 // JSON formatting overhead
+      break
+    case 'markdown':
+      estimatedSize *= 1.5 // Markdown formatting
+      break
+    case 'csv':
+      estimatedSize *= 0.8 // CSV is more compact
+      break
+    case 'excel':
+      estimatedSize *= 2.0 // Excel has more overhead
+      break
+    case 'pdf':
+      estimatedSize *= 3.0 // PDF has significant overhead
+      break
+  }
+  
+  // Convert to human readable format
+  if (estimatedSize < 1024) {
+    return `${Math.round(estimatedSize)} B`
+  } else if (estimatedSize < 1024 * 1024) {
+    return `${Math.round(estimatedSize / 1024)} KB`
+  } else {
+    return `${Math.round(estimatedSize / (1024 * 1024))} MB`
+  }
+}
 </script>
 
 <style scoped>
@@ -944,6 +2484,24 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+.canvas-layout {
+  flex: 1;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+.fullscreen-canvas {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
 }
 
 .top-bar {
@@ -951,10 +2509,11 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   padding: 12px 20px;
-  background: white;
-  border-bottom: 1px solid #eee;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-default);
+  box-shadow: var(--shadow-sm);
   z-index: 100;
+  backdrop-filter: blur(8px);
 }
 
 .top-bar-left {
@@ -970,9 +2529,10 @@ onMounted(async () => {
 
 .app-title {
   margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: #333;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  font-family: var(--font-family);
 }
 
 .top-bar-right {
@@ -988,8 +2548,8 @@ onMounted(async () => {
 
 .capture-panel {
   width: 280px;
-  background: white;
-  border-right: 1px solid #eee;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-default);
   padding: 16px;
   overflow-y: auto;
 }
@@ -1000,9 +2560,10 @@ onMounted(async () => {
 
 .panel-section h3 {
   margin: 0 0 12px 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  font-family: var(--font-family);
 }
 
 .w-full {
@@ -1023,10 +2584,16 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: flex-start;
   padding: 8px;
-  border: 1px solid #eee;
-  border-radius: 4px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
   margin-bottom: 8px;
-  background: #fafafa;
+  background: var(--bg-elevated);
+  transition: all 0.2s ease;
+}
+
+.inbox-task:hover {
+  box-shadow: var(--shadow-sm);
+  border-color: var(--border-default);
 }
 
 .task-info {
@@ -1041,7 +2608,7 @@ onMounted(async () => {
 
 .task-info p {
   font-size: 11px;
-  color: #666;
+  color: var(--text-secondary);
   margin: 0 0 4px 0;
 }
 
@@ -1057,9 +2624,17 @@ onMounted(async () => {
 .module-item {
   padding: 6px 10px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   margin-bottom: 4px;
-  color: rgba(0,0,0,0.7);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.module-item:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .canvas-area {
@@ -1074,17 +2649,19 @@ onMounted(async () => {
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .empty-state h2 {
   margin: 0 0 8px 0;
-  font-size: 24px;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
 }
 
 .empty-state p {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--font-size-sm);
 }
 
 /* Element Plus customizations */
@@ -1116,12 +2693,12 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   padding: 8px 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .shortcut-name {
-  font-size: 14px;
-  color: #606266;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
 }
 
 /* Form row for side-by-side inputs */
@@ -1139,5 +2716,1374 @@ onMounted(async () => {
   height: auto !important;
   padding: 12px 20px !important;
   white-space: normal !important;
+}
+
+/* Modern TopBar Styles */
+.modern-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  padding: 0 24px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-default);
+  box-shadow: var(--shadow-sm);
+  z-index: 100;
+  backdrop-filter: blur(8px);
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.drawer-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.drawer-toggle:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.app-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brand-title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.brand-subtitle {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.topbar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  max-width: 480px;
+  margin: 0 40px;
+}
+
+.global-search {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  gap: 12px;
+}
+
+.global-search:hover {
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-sm);
+}
+
+.search-icon {
+  color: var(--text-muted);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.search-placeholder {
+  flex: 1;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.search-shortcut {
+  display: flex;
+  align-items: center;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.view-tabs {
+  display: flex;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  gap: 2px;
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  background: var(--bg-base);
+  color: var(--text-primary);
+}
+
+.tab-btn.active {
+  background: var(--primary);
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  background: var(--border-default);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.action-btn.primary {
+  background: var(--primary);
+  color: white;
+}
+
+.action-btn.primary:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+/* Modern Left Drawer */
+.left-drawer {
+  width: 320px;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px 24px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.drawer-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.drawer-content {
+  flex: 1;
+  padding: 0 24px 24px 24px;
+  overflow-y: auto;
+}
+
+.drawer-section {
+  margin-bottom: 32px;
+}
+
+.drawer-section:last-child {
+  margin-bottom: 0;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.section-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--primary);
+  color: white;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  margin-left: auto;
+}
+
+.section-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.action-btn-full {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: var(--font-size-sm);
+}
+
+/* Right Drawer */
+.right-drawer {
+  width: 300px;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.task-preview {
+  padding: 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.task-priority {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: white;
+  margin-bottom: 12px;
+}
+
+.task-priority.priority-0 { background: var(--danger); }
+.task-priority.priority-1 { background: var(--warning); }
+.task-priority.priority-2 { background: #FADB14; color: #000; }
+.task-priority.priority-3 { background: var(--success); }
+.task-priority.priority-4 { background: var(--primary); }
+
+.task-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+  line-height: var(--line-height-tight);
+}
+
+.task-description {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: var(--line-height-normal);
+  margin: 0;
+}
+
+.task-properties {
+  padding: 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.property-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.property-group:last-child {
+  margin-bottom: 0;
+}
+
+.property-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  font-weight: var(--font-weight-medium);
+}
+
+.property-value {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+}
+
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: white;
+}
+
+.priority-badge.priority-badge-0 { background: var(--danger); }
+.priority-badge.priority-badge-1 { background: var(--warning); }
+.priority-badge.priority-badge-2 { background: #FADB14; color: #000; }
+.priority-badge.priority-badge-3 { background: var(--success); }
+.priority-badge.priority-badge-4 { background: var(--primary); }
+
+.module-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.text-secondary {
+  color: var(--text-secondary) !important;
+}
+
+.task-actions-panel {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Top bar is now visible and functional */
+
+/* Backup Dialog Styles */
+.backup-status {
+  padding: 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+}
+
+.backup-history {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.empty-history {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  transition: all 0.2s ease;
+}
+
+.history-item:hover {
+  box-shadow: var(--shadow-sm);
+  border-color: var(--border-default);
+}
+
+.backup-info {
+  flex: 1;
+}
+
+.backup-info strong {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.backup-date {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.backup-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Enhanced Settings Styles */
+.ai-features-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ai-features-list .el-checkbox {
+  margin-bottom: 4px;
+}
+
+.ai-features-list small {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  margin-left: 24px;
+  margin-bottom: 8px;
+}
+
+.export-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.data-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stat-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.stat-value {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--primary);
+}
+
+.data-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.experimental-features small {
+  display: block;
+  color: var(--warning);
+  font-size: var(--font-size-xs);
+  margin-top: 4px;
+  margin-left: 24px;
+}
+
+/* Workload Analysis Styles */
+.workload-analysis {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.workload-summary {
+  display: flex;
+  justify-content: space-around;
+  padding: 16px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.summary-item .label {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.summary-item .value {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+}
+
+.workload-green {
+  color: var(--success) !important;
+}
+
+.workload-yellow {
+  color: var(--warning) !important;
+}
+
+.workload-red {
+  color: var(--danger) !important;
+}
+
+.task-breakdown h4 {
+  margin: 0 0 12px 0;
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+}
+
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.task-title {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+}
+
+.task-hours {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Enhanced Export Dialog Styles */
+.export-filters {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.export-content-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.export-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+}
+
+.preview-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.preview-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.preview-value {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--primary);
+}
+
+/* Modern UI Components */
+
+/* Empty State */
+.empty-state {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 1;
+}
+
+.empty-content {
+  padding: 40px;
+  border-radius: var(--radius-xl);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-lg);
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.empty-state h2 {
+  margin: 0 0 8px 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.empty-state p {
+  margin: 0 0 8px 0;
+  font-size: var(--font-size-base);
+  color: var(--text-secondary);
+}
+
+.shortcut-hint {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+
+.shortcut-hint kbd {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  font-family: monospace;
+  font-weight: var(--font-weight-medium);
+}
+
+/* Floating Action Buttons */
+.fab-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1002;
+}
+
+.fab-main {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  position: relative;
+  z-index: 1003;
+}
+
+.fab-main:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+}
+
+.fab-main.fab-expanded {
+  transform: rotate(45deg);
+}
+
+.fab-icon {
+  color: white;
+  font-size: 24px;
+  font-weight: 300;
+  transition: all 0.2s ease;
+}
+
+.fab-sub-container {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 56px;
+  height: 56px;
+}
+
+.fab-sub {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center;
+  z-index: 1002;
+}
+
+.fab-sub:hover {
+  transform: scale(1.1);
+  background: var(--bg-elevated);
+}
+
+.fab-sub-icon {
+  font-size: 16px;
+  margin-bottom: 2px;
+}
+
+.fab-sub-label {
+  font-size: 8px;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* View Switcher FAB */
+.fab-view-switcher {
+  position: fixed;
+  bottom: 96px;
+  right: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 1001;
+}
+
+.fab-view-switcher:hover {
+  transform: scale(1.05);
+  background: var(--bg-elevated);
+}
+
+/* Context Toolbar */
+.context-toolbar {
+  position: fixed;
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 999;
+  backdrop-filter: blur(8px);
+}
+
+.toolbar-button {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 16px;
+  position: relative;
+}
+
+.toolbar-button:hover {
+  background: var(--bg-elevated);
+  transform: translateY(-1px);
+}
+
+.toolbar-button.delete:hover {
+  background: var(--danger);
+  color: white;
+}
+
+.align-dropdown {
+  position: absolute;
+  top: 44px;
+  left: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  min-width: 120px;
+}
+
+.align-option {
+  padding: 8px 12px;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.align-option:hover {
+  background: var(--bg-elevated);
+}
+
+/* Insight Drawer */
+.insight-trigger {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 999;
+  backdrop-filter: blur(8px);
+}
+
+.insight-trigger:hover {
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.insight-icon {
+  font-size: 16px;
+}
+
+.insight-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.insight-drawer {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100%);
+  width: 480px;
+  max-width: 90vw;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-top: none;
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 998;
+  backdrop-filter: blur(8px);
+}
+
+.insight-drawer.drawer-open {
+  transform: translateX(-50%) translateY(0);
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.drawer-header h3 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.drawer-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.drawer-close:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.drawer-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.drawer-tab {
+  flex: 1;
+  padding: 12px 16px;
+  text-align: center;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 2px solid transparent;
+}
+
+.drawer-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+}
+
+.drawer-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.drawer-content {
+  padding: 20px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.insight-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.refresh-btn, .analyze-btn {
+  padding: 8px 16px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  transition: all 0.2s ease;
+}
+
+.refresh-btn:hover, .analyze-btn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.risk-toggle label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+/* FAB Transitions */
+.fab-sub-enter-active,
+.fab-sub-leave-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fab-sub-enter-from,
+.fab-sub-leave-to {
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+/* Responsive Design */
+@media (max-width: 1280px) {
+  .fab-container {
+    bottom: 16px;
+    right: 16px;
+  }
+  
+  .insight-drawer.drawer-open {
+    width: 80vw;
+  }
+}
+
+@media (max-width: 768px) {
+  .fab-main {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .fab-sub {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .insight-drawer {
+    width: 100vw;
+    border-radius: 0;
+  }
+  
+  .insight-trigger {
+    padding: 6px 12px;
+  }
+  
+  .context-toolbar {
+    flex-direction: column;
+  }
+}
+
+/* Timeline View Styles */
+.timeline-view {
+  width: 100%;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 20px;
+  background: var(--background);
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.timeline-header h2 {
+  margin: 0;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.timeline-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.timeline-container {
+  position: relative;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.timeline-line {
+  position: absolute;
+  left: 20px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--border);
+  z-index: 1;
+}
+
+.timeline-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.timeline-empty .empty-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.timeline-empty .empty-icon {
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+.timeline-empty h3 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  color: var(--text-secondary);
+}
+
+.timeline-empty p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+.timeline-item {
+  position: relative;
+  margin-bottom: 24px;
+  padding-left: 56px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.timeline-item:hover {
+  transform: translateX(4px);
+}
+
+.timeline-item.completed {
+  opacity: 0.8;
+}
+
+.timeline-item.high-priority .timeline-dot {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(255, 77, 79, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0); }
+}
+
+.timeline-dot {
+  position: absolute;
+  left: 11px;
+  top: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 3px solid var(--background);
+  z-index: 2;
+  transition: all 0.2s ease;
+}
+
+.timeline-item:hover .timeline-dot {
+  transform: scale(1.2);
+}
+
+.timeline-content {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--border-radius-lg);
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.timeline-item:hover .timeline-content {
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.timeline-date {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.timeline-task {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.task-header h4 {
+  margin: 0;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  flex: 1;
+  line-height: 1.4;
+}
+
+.task-badges {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.priority-badge,
+.status-badge {
+  font-size: var(--font-size-xs);
+  padding: 2px 6px;
+  border-radius: var(--border-radius-sm);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.priority-badge.priority-critical {
+  background: rgba(255, 77, 79, 0.1);
+  color: #ff4d4f;
+}
+
+.priority-badge.priority-high {
+  background: rgba(250, 140, 22, 0.1);
+  color: #fa8c16;
+}
+
+.priority-badge.priority-medium {
+  background: rgba(24, 144, 255, 0.1);
+  color: #1890ff;
+}
+
+.priority-badge.priority-low {
+  background: rgba(82, 196, 26, 0.1);
+  color: #52c41a;
+}
+
+.priority-badge.priority-backlog {
+  background: rgba(140, 140, 140, 0.1);
+  color: #8c8c8c;
+}
+
+.status-badge.pending {
+  background: rgba(250, 140, 22, 0.1);
+  color: #fa8c16;
+}
+
+.status-badge.in_progress {
+  background: rgba(24, 144, 255, 0.1);
+  color: #1890ff;
+}
+
+.status-badge.completed {
+  background: rgba(82, 196, 26, 0.1);
+  color: #52c41a;
+}
+
+.status-badge.cancelled {
+  background: rgba(140, 140, 140, 0.1);
+  color: #8c8c8c;
+}
+
+.task-description {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.task-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.module-tag {
+  background: var(--surface-secondary);
+  padding: 2px 8px;
+  border-radius: var(--border-radius-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.task-id {
+  opacity: 0.6;
+}
+
+/* Dark mode support for timeline */
+@media (prefers-color-scheme: dark) {
+  .timeline-line {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  
+  .timeline-dot {
+    border-color: var(--background);
+  }
+  
+  .timeline-content {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .timeline-item:hover .timeline-content {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--primary);
+  }
+}
+
+/* Responsive timeline */
+@media (max-width: 768px) {
+  .timeline-view {
+    padding: 16px;
+  }
+  
+  .timeline-header {
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+  }
+  
+  .timeline-item {
+    padding-left: 40px;
+  }
+  
+  .timeline-line {
+    left: 15px;
+  }
+  
+  .timeline-dot {
+    left: 6px;
+    width: 16px;
+    height: 16px;
+  }
+  
+  .task-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .task-badges {
+    align-self: flex-end;
+  }
 }
 </style>
