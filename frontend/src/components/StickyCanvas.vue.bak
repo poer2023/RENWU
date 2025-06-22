@@ -1,0 +1,1524 @@
+··<template>
+  <div 
+    ref="canvasContainer" 
+    :class="['sticky-canvas', { 'dragging': unifiedDrag.isTaskDragging(), 'panning': panZoom.panState.value.isPanning }]"
+    @wheel.passive="handleCanvasWheel"
+    @contextmenu.prevent
+  >
+    <!-- Canvas content with transform -->
+    <div 
+      ref="canvasContentRef"
+      class="canvas-content" 
+      :style="panZoom.canvasContentStyle.value"
+    >
+      <!-- Canvas background grid -->
+      <CanvasGrid />
+      
+      <!-- 虚拟化任务渲染 - 支持懒加载和LOD -->
+      <div
+        v-for="virtualTask in virtualizedTasks.visibleTasks.value"
+        :key="`task-${virtualTask.id}`"
+        :class="['task-wrapper', { 'dragging': unifiedDrag.getCurrentDragTask()?.id === virtualTask.id }]"
+        :style="getTaskPosition(virtualTask)"
+        :data-task-id="virtualTask.id"
+      >
+        <!-- 使用LOD任务卡片 -->
+        <TaskCardLOD
+          :task="virtualTask"
+          :lod-level="virtualTask.lodLevel"
+          :distance="virtualTask.distance"
+          :is-selected="selectedTask?.id === virtualTask.id"
+          @select="selectTask"
+          @openDetails="handleOpenDetails"
+          @startConnection="connections.startConnection"
+          @getTaskPosition="getTaskPositionData"
+          @subtasksCreated="handleSubtasksCreated"
+        />
+      </div>
+
+      <!-- 懒加载任务连线 -->
+      <TaskConnectionsLazy
+        :connections="dependencies"
+        :task-positions="positions.taskPositions.value"
+        :task-dimensions="positions.taskDimensions.value"
+        :canvas-width="canvasSize.width"
+        :canvas-height="canvasSize.height"
+        :viewport="panZoom.viewport.value"
+        :preview-connection="connections.connectionPreview.value"
+        :max-render-connections="200"
+        :viewport-margin="1200"
+        :lod-distances="[1500, 3000, 6000]"
+        @connection-double-click="handleConnectionDoubleClick"
+      />
+
+      <!-- Island View -->
+      <IslandView
+        ref="islandViewRef"
+        :enabled="islandView"
+        :islands="islands"
+        :container-width="containerWidth"
+        :container-height="containerHeight"
+        :task-positions="positions.taskPositions.value"
+        @toggle-island="handleToggleIsland"
+        @arrange-tasks-in-islands="handleArrangeTasksInIslands"
+      />
+    </div>
+
+    <!-- Mini Map -->
+    <MiniMap
+      :tasks="tasks"
+      :task-positions="positions.taskPositions.value"
+      :canvas-width="canvasSize.width"
+      :canvas-height="canvasSize.height"
+      :viewport-x="-panZoom.viewport.value.x / panZoom.viewport.value.scale"
+      :viewport-y="-panZoom.viewport.value.y / panZoom.viewport.value.scale"
+      :viewport-width="panZoom.viewportWidth.value"
+      :viewport-height="panZoom.viewportHeight.value"
+      :selected-task-id="selectedTask?.id"
+      @focus-task="focusOnTask"
+      @move-viewport="handleViewportMove"
+    />
+
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted, nextTick, computed, watch, toRef } from 'vue'
+import TaskCard from './TaskCard.vue'
+import TaskCardLOD from './task/TaskCardLOD.vue'
+import TaskConnections from './TaskConnections.vue'
+import TaskConnectionsLazy from './task/TaskConnectionsLazy.vue'
+import MiniMap from './MiniMap.vue'
+import IslandView from './IslandView.vue'
+import CanvasGrid from './canvas/CanvasGrid.vue'
+import { type Task, useTaskStore } from '@/stores/tasks'
+import { useSettingsStore } from '@/stores/settings'
+import { autoArrange } from '@/utils/autoArrange'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { throttle } from 'lodash'
+
+// Import composables
+import { useUnifiedDragSystem } from '@/composables/useUnifiedDragSystem'
+import { useUltraPerformancePanZoom } from '@/composables/useUltraPerformancePanZoom'
+import { useTaskPositions } from '@/composables/useTaskPositions'
+import { useConnections } from '@/composables/useConnections'
+import { useVirtualizedTasks } from '@/composables/useVirtualizedTasks'
+
+interface Props {
+  tasks: Task[]
+  selectedTask?: Task | null
+  islandView?: boolean
+  islandViewEnabled?: boolean
+  themeIslands?: any[]
+}
+
+const props = defineProps<Props>()
+const emit = defineEmits<{
+  selectTask: [task: Task | null]
+  openTaskDetails: [task: Task, position: { x: number, y: number }]
+  autoArrangeComplete: []
+}>()
+
+const settingsStore = useSettingsStore()
+const taskStore = useTaskStore()
+
+const canvasContainer = ref<HTMLElement>()
+const taskElements = ref<HTMLElement[]>([])
+const islandViewRef = ref<InstanceType<typeof IslandView>>()
+
+// 状态：用于区分画布上的单击和拖动
+const canvasClickState = ref<{
+  isDown: boolean
+  startX: number
+  startY: number
+  isDragging: boolean
+}>({ isDown: false, startX: 0, startY: 0, isDragging: false })
+
+// Canvas size
+const canvasSize = ref({ width: 6000, height: 6000 })
+
+// Container dimensions for island view
+const containerWidth = computed(() => canvasContainer.value?.getBoundingClientRect().width || 1200)
+const containerHeight = computed(() => canvasContainer.value?.getBoundingClientRect().height || 800)
+
+// Use composables
+const tasksRef = toRef(props, 'tasks')
+
+// Task positions management
+const positions = useTaskPositions(tasksRef, {
+  onPositionChange: async (taskId: number, x: number, y: number) => {
+    try {
+      await taskStore.updateTask(taskId, { 
+        position_x: x, 
+        position_y: y 
+      })
+    } catch (error) {
+      console.error('保存任务位置失败:', error)
+    }
+  },
+  onBoundsUpdate: (bounds) => {
+    canvasSize.value = bounds
+  }
+})
+
+// Pan and zoom management
+const panZoom = useUltraPerformancePanZoom(
+  canvasContainer,
+  canvasSize,
+  {
+    onViewportChange: (viewport: any) => {
+      // 触发虚拟化更新
+      virtualizedTasks.forceUpdate()
+    }
+  }
+)
+
+// 虚拟化任务系统 - 懒加载和LOD
+const virtualizedTasks = useVirtualizedTasks(
+  tasksRef,
+  positions.taskPositions,
+  panZoom.viewport,
+  canvasContainer,
+  {
+    viewportMargin: 800,      // 800px预加载边距
+    maxRenderTasks: 150,      // 最多渲染150个任务
+    lodDistances: [1000, 2500, 5000], // LOD距离阈值
+    enablePredictiveLoading: true
+  }
+)
+
+// 统一拖动系统
+const unifiedDrag = useUnifiedDragSystem(
+  canvasContainer,
+  panZoom.viewport,
+  positions.taskPositions,
+  {
+    onCanvasPanStart: () => {
+      console.log('🚀 [StickyCanvas] 画布平移开始')
+    },
+    onCanvasPanMove: (deltaX: number, deltaY: number) => {
+      // 使用panZoom的高性能平移方法
+      panZoom.panBy(deltaX, deltaY)
+    },
+    onCanvasPanEnd: () => {
+      console.log('🛑 [StickyCanvas] 画布平移结束')
+    },
+    onTaskDragStart: (task: Task) => {
+      console.log('🚀 [StickyCanvas] 任务拖动开始:', task.title)
+      selectTask(task)
+    },
+    onTaskDragMove: (task: Task, position: { x: number; y: number }) => {
+      // 高性能实时位置更新 - 移除console.log提升性能
+      positions.setTaskPosition(task.id, position.x, position.y, true)
+    },
+    onTaskDragEnd: (task: Task, position: { x: number; y: number }) => {
+      console.log('🛑 [StickyCanvas] 任务拖动结束:', task.title, position)
+      // 获取约束后的位置并保存到后端
+      const constrainedPosition = positions.taskPositions.value[task.id] || position
+      updateTaskPosition(task.id, constrainedPosition.x, constrainedPosition.y)
+    },
+    onTaskSelect: (task: Task | null) => {
+      emit('selectTask', task)
+    }
+  }
+)
+
+// Connection management
+const connections = useConnections(canvasContainer, panZoom.viewport, {
+  onConnectionCreate: async (fromTaskId, toTaskId) => {
+    try {
+      await taskStore.createDependency({
+        from_task_id: fromTaskId,
+        to_task_id: toTaskId,
+        dependency_type: 'blocks'
+      })
+      console.log('连接创建成功:', fromTaskId, '->', toTaskId)
+      await taskStore.fetchDependencies()
+    } catch (error) {
+      console.error('Failed to create dependency:', error)
+      ElMessage.error('创建连接失败')
+    }
+  },
+  onConnectionEnd: () => {
+    // 重置所有任务卡片的连接状态
+    console.log('连接结束，重置所有任务的连接状态')
+    // 这里可以通过事件或其他方式通知任务卡片重置状态
+    // 由于我们没有直接的引用，我们可以使用全局事件
+    document.dispatchEvent(new CustomEvent('connection-ended'))
+  }
+})
+
+// 添加一个canvas content元素的引用
+const canvasContentRef = ref<HTMLElement>()
+
+// Dependencies from store
+const dependencies = computed(() => taskStore.dependencies)
+
+
+// 使用虚拟化系统替代旧的可见任务计算
+// 旧的 visibleTasks computed 已被 virtualizedTasks.visibleTasks 替代
+
+// 性能监控
+const performanceMetrics = ref({
+  lastRenderTime: 0,
+  frameCount: 0,
+  avgFrameTime: 0
+})
+
+// 优化的渲染函数
+function optimizedRender() {
+  const startTime = performance.now()
+  
+  // 使用 nextTick 确保 DOM 更新完成
+  nextTick(() => {
+    const endTime = performance.now()
+    const renderTime = endTime - startTime
+    
+    performanceMetrics.value.lastRenderTime = renderTime
+    performanceMetrics.value.frameCount++
+    
+    // 计算平均帧时间
+    performanceMetrics.value.avgFrameTime = 
+      (performanceMetrics.value.avgFrameTime * (performanceMetrics.value.frameCount - 1) + renderTime) / 
+      performanceMetrics.value.frameCount
+    
+    // 性能警告
+    if (renderTime > 16.67) { // 超过60fps
+      console.warn(`Canvas render time: ${renderTime.toFixed(2)}ms (over 16.67ms threshold)`)
+    }
+  })
+}
+
+// 使用 throttle 限制高频操作 - 针对平移优化
+const throttledViewportUpdate = throttle(() => {
+  // 只有在非平移状态或平移结束时才触发重新计算
+  if (!panZoom.panState.value.isPanning) {
+    optimizedRender()
+  }
+}, 16) // 60fps
+
+// 专门为平移优化的更轻量级更新函数
+const lightweightPanUpdate = throttle(() => {
+  // 平移时不触发复杂的重新渲染，只更新变换
+  // 这样可以保持流畅的平移效果
+}, 8) // 120fps，更流畅的平移
+
+// 在script setup顶部添加任务尺寸管理
+const taskDimensions = ref<{ [key: number]: { width: number; height: number } }>({})
+
+// Methods
+function getTaskPosition(task: Task) {
+  const position = positions.taskPositions.value[task.id] || positions.getDefaultPosition(task)
+  const isDragging = unifiedDrag.getCurrentDragTask()?.id === task.id
+  
+  // 拖动时使用特殊样式优化
+  if (isDragging) {
+    return {
+      position: 'absolute' as const,
+      left: '0px',
+      top: '0px',
+      transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(1.02)`,
+      zIndex: 1000,
+      willChange: 'transform' as const,
+      transition: 'none' as const, // 拖动时禁用过渡动画
+      pointerEvents: 'auto' as const
+    }
+  }
+  
+  return {
+    position: 'absolute' as const,
+    left: '0px',
+    top: '0px',
+    transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
+    zIndex: 1,
+    willChange: 'auto' as const,
+    transition: 'transform 0.15s ease-out' as const, // 非拖动时的平滑过渡
+    pointerEvents: 'auto' as const
+  }
+}
+
+// handleTaskMouseDown 已被统一拖动系统替代，不再需要
+
+function selectTask(task: Task) {
+  emit('selectTask', task)
+}
+
+function handleOpenDetails(task: Task, position: { x: number, y: number }) {
+  emit('openTaskDetails', task, position)
+}
+
+// 获取任务位置数据
+function getTaskPositionData(taskId: number) {
+  return positions.taskPositions.value[taskId] || { x: 0, y: 0 }
+}
+
+// 处理子任务创建完成
+function handleSubtasksCreated(data: { parentTask: Task, subtasks: Task[] }) {
+  console.log('子任务创建完成:', data)
+  
+  // 刷新任务位置数据
+  positions.updateTaskDimensions()
+  
+  // 可以添加其他处理逻辑，比如自动聚焦到新创建的子任务区域
+  if (data.subtasks.length > 0) {
+    const firstSubtask = data.subtasks[0]
+    const position = positions.taskPositions.value[firstSubtask.id]
+    if (position) {
+      // 可以添加平滑滚动到子任务位置的逻辑
+      console.log('新子任务位置:', position)
+    }
+  }
+}
+
+// 处理双击连线删除
+async function handleConnectionDoubleClick(connection: any) {
+  try {
+    // 获取任务信息用于确认对话框
+    const fromTask = props.tasks.find(t => t.id === connection.from_task_id)
+    const toTask = props.tasks.find(t => t.id === connection.to_task_id)
+    
+    if (!fromTask || !toTask) {
+      ElMessage.error('无法找到相关任务')
+      return
+    }
+
+    // 显示确认对话框
+    await ElMessageBox.confirm(
+      `确定要删除从「${fromTask.title}」到「${toTask.title}」的连接吗？`,
+      '删除连接',
+      {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      }
+    )
+
+    // 用户确认后，调用删除API
+    await taskStore.deleteDependency(connection.from_task_id, connection.to_task_id)
+    
+    ElMessage.success('连接已删除')
+    
+  } catch (error: any) {
+    if (error !== 'cancel') { // 用户取消操作不显示错误
+      console.error('删除连接失败:', error)
+      ElMessage.error('删除连接失败')
+    }
+  }
+}
+
+// ResizeObserver设置
+function setupDimensionObserver() {
+  return positions.setupDimensionObserver()
+}
+
+// handleCanvasMouseDown 已被统一拖动系统替代
+/*
+function handleCanvasMouseDown(event: MouseEvent) {
+  // --- 1. 中键拖动 (最高优先级) ---
+  if (event.button === 1) {
+    console.log('🚀 [Refactor] 中键按下，立即开始画布平移。')
+    event.preventDefault()
+    event.stopPropagation()
+    panZoom.startPan(event)
+    return // 确保不执行任何其他逻辑
+  }
+
+  const target = event.target as HTMLElement
+  const isTaskClick = target.closest('.task-wrapper')
+
+  // --- 2. 左键点击任务 (由任务自身处理) ---
+  if (event.button === 0 && isTaskClick) {
+    console.log('🖱️ [Refactor] 左键点击任务，由 TaskCard 处理。')
+    return // 不处理，让 handleTaskMouseDown 生效
+  }
+
+  // --- 3. 左键点击画布背景 (拖动或取消选择) ---
+  if (event.button === 0 && !isTaskClick) {
+    console.log('🖱️ [Refactor] 左键在画布背景按下，准备拖动或取消选择。')
+    event.preventDefault()
+    
+    // 记录点击状态
+    canvasClickState.value = {
+      isDown: true,
+      startX: event.clientX,
+      startY: event.clientY,
+      isDragging: false
+    }
+
+    // 开始画布平移，PanZoom composable 会处理拖动逻辑
+    panZoom.startPan(event)
+  }
+}
+*/
+
+// 以下函数已被统一拖动系统替代
+/*
+function handleWindowMouseUp(event: MouseEvent) {
+  if (canvasClickState.value.isDown && event.button === 0) {
+    // 如果没有拖动（或拖动距离很小），则视为单击
+    if (!canvasClickState.value.isDragging) {
+      console.log('🎯 [Refactor] 检测到画布单击，取消选择任务。')
+      emit('selectTask', null)
+    } else {
+      console.log('💨 [Refactor] 画布拖动结束。')
+    }
+    // 重置状态
+    canvasClickState.value.isDown = false
+    canvasClickState.value.isDragging = false
+  }
+}
+
+// 新增：处理全局 mousemove 事件
+function handleWindowMouseMove(event: MouseEvent) {
+  if (canvasClickState.value.isDown && !canvasClickState.value.isDragging) {
+    const dx = event.clientX - canvasClickState.value.startX
+    const dy = event.clientY - canvasClickState.value.startY
+    // 如果移动超过5像素，则标记为拖动状态
+    if (Math.sqrt(dx * dx + dy * dy) > 5) {
+      console.log('💨 [Refactor] 开始拖动画布。')
+      canvasClickState.value.isDragging = true
+    }
+  }
+}
+*/
+
+// ResizeObserver instance
+let dimensionObserver: ResizeObserver | null = null
+
+onMounted(() => {
+  // 原有的mousedown监听器已经被统一拖动系统替代
+  console.log('✅ [Refactor] 统一拖动系统已接管事件处理。')
+  
+  // 全局监听器已由统一拖动系统处理
+  // window.addEventListener('mouseup', handleWindowMouseUp)
+  // window.addEventListener('mousemove', handleWindowMouseMove)
+
+  // Initialize positions for any existing tasks
+  nextTick(() => {
+    positions.initializeTaskPositions()
+    
+    // Setup dimension monitoring
+    dimensionObserver = setupDimensionObserver() || null
+  })
+
+  // 超级预热系统
+  nextTick(() => {
+    console.log('🚀 开始预热高性能系统...')
+    
+    // 初始化统一拖动系统
+    unifiedDrag.init(toRef(props, 'tasks'))
+    
+    // 预热画布平移缩放系统
+    panZoom.warmup()
+    
+    // 预热虚拟化系统
+    virtualizedTasks.warmup()
+    
+    // 预热GPU层
+    setTimeout(() => {
+      const canvasContent = canvasContainer.value?.querySelector('.canvas-content') as HTMLElement
+      if (canvasContent) {
+        // 强制创建GPU合成层
+        canvasContent.style.willChange = 'transform'
+        canvasContent.style.transform = 'translate3d(0,0,0)'
+        
+        // 预热任务卡片的GPU层
+        props.tasks.forEach(task => {
+          const taskElement = document.querySelector(`[data-task-id="${task.id}"]`) as HTMLElement
+          if (taskElement) {
+            taskElement.style.willChange = 'transform'
+            taskElement.style.transform = 'translate3d(0,0,0)'
+            
+            // 延迟恢复正常状态
+            setTimeout(() => {
+              if (!unifiedDrag.isTaskDragging()) {
+                taskElement.style.willChange = 'auto'
+              }
+            }, 100)
+          }
+        })
+        
+        console.log('🎉 高性能拖动系统预热完成！')
+        console.log(`📊 虚拟化状态: 总任务 ${props.tasks.length}, 可见任务 ${virtualizedTasks.visibleTasks.value.length}`)
+      }
+    }, 100)
+  })
+})
+
+// Cleanup on unmount
+onUnmounted(() => {
+  if (dimensionObserver) {
+    dimensionObserver.disconnect()
+  }
+  
+  // 统一拖动系统将在destroy中清理自己的监听器
+  console.log('🔧 [Refactor] 事件清理交由统一拖动系统处理。')
+  
+  // 全局监听器清理已由统一拖动系统处理
+  // window.removeEventListener('mouseup', handleWindowMouseUp)
+  // window.removeEventListener('mousemove', handleWindowMouseMove)
+
+  // Cleanup统一拖动系统
+  unifiedDrag.destroy()
+  connections.cleanup()
+  panZoom.cleanup()
+})
+
+// Re-initialize positions when tasks change
+function updateTaskPositions() {
+  nextTick(() => {
+    positions.initializeTaskPositions()
+  })
+}
+
+// Auto arrange functionality
+function getTaskSizes(): Map<number, { width: number; height: number }> {
+  const sizes = new Map()
+  
+  props.tasks.forEach(task => {
+    const element = document.querySelector(`[data-task-id="${task.id}"]`) as HTMLElement
+    if (element) {
+      sizes.set(task.id, {
+        width: element.offsetWidth || 200,
+        height: element.offsetHeight || 120
+      })
+    } else {
+      sizes.set(task.id, { width: 200, height: 120 })
+    }
+  })
+  
+  return sizes
+}
+
+function triggerAutoArrange() {
+  if (!canvasContainer.value || props.tasks.length === 0) return
+  
+  const containerRect = canvasContainer.value.getBoundingClientRect()
+  const taskSizes = getTaskSizes()
+  
+  const newPositions = autoArrange(
+    props.tasks,
+    containerRect.width,
+    containerRect.height,
+    settingsStore.autoArrangeOptions,
+    taskSizes
+  )
+  
+  if (settingsStore.autoArrangeOptions.animated) {
+    // 动画过渡到新位置
+    animateToPositions(newPositions)
+  } else {
+    // 直接设置新位置
+    positions.setTaskPositions(newPositions)
+  }
+  
+  emit('autoArrangeComplete')
+}
+
+function animateToPositions(newPositions: { [key: number]: { x: number; y: number } }) {
+  const duration = 500 // 动画持续时间
+  const startTime = performance.now()
+  const startPositions = { ...positions.taskPositions.value }
+  
+  function animate(currentTime: number) {
+    const elapsed = currentTime - startTime
+    const progress = Math.min(elapsed / duration, 1)
+    
+    // 使用easeInOutCubic缓动函数
+    const easeProgress = progress < 0.5
+      ? 4 * progress * progress * progress
+      : 1 - Math.pow(-2 * progress + 2, 3) / 2
+    
+    // 插值计算当前位置
+    const currentPositions: { [key: number]: { x: number; y: number } } = {}
+    Object.keys(newPositions).forEach(taskIdStr => {
+      const taskId = parseInt(taskIdStr)
+      const startPos = startPositions[taskId] || { x: 0, y: 0 }
+      const endPos = newPositions[taskId]
+      
+      currentPositions[taskId] = {
+        x: startPos.x + (endPos.x - startPos.x) * easeProgress,
+        y: startPos.y + (endPos.y - startPos.y) * easeProgress
+      }
+    })
+    
+    positions.setTaskPositions(currentPositions)
+    
+    if (progress < 1) {
+      requestAnimationFrame(animate)
+    }
+  }
+  
+  requestAnimationFrame(animate)
+}
+
+// Island layout functionality
+const islandView = ref(false)
+const islands = ref<any[]>([])
+
+// Sync island view with props
+watch(() => props.islandViewEnabled, (enabled) => {
+  if (enabled !== undefined) {
+    islandView.value = enabled
+  }
+}, { immediate: true })
+
+watch(() => props.themeIslands, (newIslands) => {
+  if (newIslands) {
+    islands.value = newIslands
+    if (newIslands.length > 0 && props.islandViewEnabled) {
+      arrangeTasksInIslands()
+    }
+  }
+}, { immediate: true })
+
+function applyIslandLayout(islandData: any[]) {
+  console.log('Applying island layout:', islandData)
+  islandView.value = true
+  islands.value = islandData
+  
+  // Calculate island positions and layout
+  arrangeTasksInIslands()
+}
+
+function arrangeTasksInIslands() {
+  if (!canvasContainer.value || islands.value.length === 0) return
+  
+  // 使用requestAnimationFrame来优化性能
+  requestAnimationFrame(() => {
+    const containerRect = canvasContainer.value!.getBoundingClientRect()
+    const containerWidth = containerRect.width
+    const containerHeight = containerRect.height
+    
+    // Calculate grid layout for islands
+    const islandsCount = islands.value.length
+    const cols = Math.ceil(Math.sqrt(islandsCount))
+    const rows = Math.ceil(islandsCount / cols)
+    
+    const islandWidth = containerWidth / cols
+    const islandHeight = containerHeight / rows
+    const padding = 20
+    
+    // 批量计算所有位置，避免频繁的DOM操作
+    const newPositions: { [key: number]: { x: number; y: number } } = {}
+    
+    islands.value.forEach((island, index) => {
+      const row = Math.floor(index / cols)
+      const col = index % cols
+      
+      const islandX = col * islandWidth + padding
+      const islandY = row * islandHeight + padding
+      const availableWidth = islandWidth - 2 * padding
+      const availableHeight = islandHeight - 2 * padding
+      
+      // Arrange tasks within this island
+      arrangeTasksInIsland(island.tasks, islandX, islandY, availableWidth, availableHeight, newPositions)
+    })
+    
+    // 批量更新位置
+    Object.assign(positions.taskPositions.value, newPositions)
+  })
+}
+
+function arrangeTasksInIsland(
+  tasks: any[], 
+  startX: number, 
+  startY: number, 
+  width: number, 
+  height: number, 
+  newPositions?: { [key: number]: { x: number; y: number } }
+) {
+  if (!tasks || tasks.length === 0) return
+  
+  const taskWidth = 200
+  const taskHeight = 120
+  const spacing = 10
+  
+  const cols = Math.floor(width / (taskWidth + spacing))
+  
+  tasks.forEach((task, index) => {
+    const row = Math.floor(index / cols)
+    const col = index % cols
+    
+    const x = startX + col * (taskWidth + spacing)
+    const y = startY + row * (taskHeight + spacing) + 30 // Reserve space for island header
+    
+    if (newPositions) {
+      newPositions[task.id] = { x, y }
+    } else {
+      positions.taskPositions.value[task.id] = { x, y }
+    }
+  })
+}
+
+function focusOnTask(taskId: number) {
+  // Find the task and center the view on it
+  const task = props.tasks.find(t => t.id === taskId)
+  if (task && positions.taskPositions.value[taskId]) {
+    const position = positions.taskPositions.value[taskId]
+    
+    // 计算容器中心点
+    if (canvasContainer.value) {
+      const containerRect = canvasContainer.value.getBoundingClientRect()
+      const centerX = containerRect.width / 2
+      const centerY = containerRect.height / 2
+      
+      // 将任务定位到画布中心
+      panZoom.viewport.value.x = centerX - (position.x * panZoom.viewport.value.scale) - 100 // 100是任务卡片宽度的一半
+      panZoom.viewport.value.y = centerY - (position.y * panZoom.viewport.value.scale) - 60  // 60是任务卡片高度的一半
+    }
+    
+    // 添加高亮效果
+    const element = document.querySelector(`[data-task-id="${taskId}"]`) as HTMLElement
+    if (element) {
+      // 添加临时高亮效果
+      element.style.boxShadow = '0 0 20px #2563eb, 0 0 40px rgba(37, 99, 235, 0.5)'
+      element.style.transform = 'translateY(-4px) scale(1.05)'
+      element.style.transition = 'all 0.3s ease'
+      
+      setTimeout(() => {
+        element.style.boxShadow = ''
+        element.style.transform = ''
+        element.style.transition = ''
+      }, 2000)
+    }
+  }
+}
+
+// 添加新函数：定位到最新任务
+function focusOnLatestTask() {
+  if (props.tasks.length === 0) return
+  
+  // 找到最新创建的任务（按创建时间排序）
+  const latestTask = props.tasks.reduce((latest, current) => {
+    const latestTime = new Date(latest.created_at).getTime()
+    const currentTime = new Date(current.created_at).getTime()
+    return currentTime > latestTime ? current : latest
+  })
+  
+  focusOnTask(latestTask.id)
+}
+
+function exitIslandView() {
+  islandView.value = false
+  islands.value = []
+  // Return to normal layout
+  positions.initializeTaskPositions()
+}
+
+function getIslandHeaderStyle(island: any, index: number) {
+  if (!canvasContainer.value) return {}
+  
+  const containerRect = canvasContainer.value.getBoundingClientRect()
+  const containerWidth = containerRect.width
+  const containerHeight = containerRect.height
+  
+  const islandsCount = islands.value.length
+  const cols = Math.ceil(Math.sqrt(islandsCount))
+  const rows = Math.ceil(islandsCount / cols)
+  
+  const islandWidth = containerWidth / cols
+  const islandHeight = containerHeight / rows
+  const padding = 20
+  
+  const row = Math.floor(index / cols)
+  const col = index % cols
+  
+  const islandX = col * islandWidth + padding
+  const islandY = row * islandHeight + padding
+  
+  return {
+    position: 'absolute' as const,
+    left: `${islandX}px`,
+    top: `${islandY}px`,
+    width: `${islandWidth - 2 * padding}px`,
+    backgroundColor: island.color,
+    borderColor: island.color
+  }
+}
+
+function handleToggleIsland(island: any) {
+  island.collapsed = !island.collapsed
+  
+  // Hide/show tasks in this island
+  island.tasks.forEach((task: any) => {
+    const element = document.querySelector(`[data-task-id="${task.id}"]`) as HTMLElement
+    if (element) {
+      if (island.collapsed) {
+        element.style.display = 'none'
+      } else {
+        element.style.display = 'block'
+      }
+    }
+  })
+}
+
+function handleArrangeTasksInIslands() {
+  arrangeTasksInIslands()
+}
+
+function handleViewportMove(x: number, y: number) {
+  // Update viewport position for infinite canvas
+  panZoom.viewport.value.x = -x * panZoom.viewport.value.scale
+  panZoom.viewport.value.y = -y * panZoom.viewport.value.scale
+}
+
+// Connection mode functions
+function enterConnectionMode(fromTaskId: number) {
+  connections.enterConnectionMode(fromTaskId)
+}
+
+function handleConnectionTargetClick(event: MouseEvent) {
+  // This is handled by the connections composable
+}
+
+function exitConnectionMode() {
+  connections.exitConnectionMode()
+}
+
+// handleCanvasAuxClick 已被统一拖动系统替代
+/*
+function handleCanvasAuxClick(event: MouseEvent) {
+  console.log('🎯 辅助点击事件:', event.button)
+  
+  // 阻止中键的默认行为（如打开新标签页等）
+  if (event.button === 1) {
+    console.log('🚫 阻止中键默认行为')
+    event.preventDefault()
+    event.stopPropagation()
+  }
+}
+*/
+
+// 处理滚轮事件
+function handleCanvasWheel(event: WheelEvent) {
+  console.log('🎯 滚轮事件触发')
+  event.preventDefault()
+  panZoom.handleWheel(event)
+}
+
+
+
+
+// Keyboard shortcuts
+function handleKeyDown(event: KeyboardEvent) {
+  // Shift + A: Open AI smart creation dialog
+  if (event.shiftKey && event.key === 'A') {
+    event.preventDefault()
+    openSmartCreationDialog()
+  }
+}
+
+// Initialize viewport on mount
+onMounted(() => {
+  centerViewport()
+  
+  // Add keyboard event listener
+  document.addEventListener('keydown', handleKeyDown)
+})
+
+onUnmounted(() => {
+  // Clean up keyboard event listener
+  document.removeEventListener('keydown', handleKeyDown)
+})
+
+// Expose functions
+defineExpose({
+  triggerAutoArrange,
+  applyIslandLayout,
+  focusOnTask,
+  focusOnLatestTask,
+  exitIslandView,
+  enterConnectionMode,
+  centerViewport,
+  resetZoom
+})
+
+// Note: Watch for tasks is already handled above in the debug section
+
+// 居中视口函数
+function centerViewport() {
+  if (!canvasContainer.value) return
+  
+  const containerRect = canvasContainer.value.getBoundingClientRect()
+  panZoom.viewport.value.x = (containerRect.width - canvasSize.value.width * panZoom.viewport.value.scale) / 2
+  panZoom.viewport.value.y = (containerRect.height - canvasSize.value.height * panZoom.viewport.value.scale) / 2
+}
+
+// 重置缩放函数
+function resetZoom() {
+  panZoom.viewport.value.scale = 1
+  centerViewport()
+}
+
+// 任务位置更新优化
+async function updateTaskPosition(taskId: number, x: number, y: number) {
+  try {
+    await taskStore.updateTask(taskId, {
+      position_x: x,
+      position_y: y
+    })
+  } catch (error) {
+    console.error('Failed to update task position:', error)
+    // 回滚位置
+    const task = props.tasks.find(t => t.id === taskId)
+    if (task) {
+      positions.taskPositions.value[taskId] = {
+        x: task.position_x || 0,
+        y: task.position_y || 0
+      }
+    }
+  }
+}
+
+// 任务尺寸更新处理
+function handleTaskDimensionsUpdate(taskId: number, dimensions: { width: number; height: number }) {
+  taskDimensions.value[taskId] = dimensions
+}
+</script>
+
+<style scoped>
+/* Modern Sticky Canvas - Enhanced Design */
+.sticky-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  /* 移除过渡效果，提升性能 */
+}
+
+.sticky-canvas:active {
+  cursor: grabbing;
+}
+
+.sticky-canvas.dragging {
+  cursor: grabbing;
+}
+
+.sticky-canvas.panning {
+  cursor: grabbing;
+}
+
+/* 超高性能画布内容 */
+.canvas-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-origin: 0 0;
+  /* GPU加速配置 */
+  will-change: transform;
+  contain: strict; /* 严格隔离，最大化性能 */
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
+  isolation: isolate;
+  /* 强制硬件加速 */
+  transform: translateZ(0);
+}
+
+/* 高性能状态优化 */
+.panning .canvas-content {
+  transition: none !important;
+  will-change: transform;
+}
+
+.panning .task-wrapper {
+  transition: none !important;
+  will-change: transform;
+}
+
+.dragging .task-wrapper {
+  transition: none !important;
+  will-change: transform;
+  z-index: 1000; /* 拖拽时置顶 */
+}
+
+/* 任务拖拽时的性能优化 */
+.task-wrapper.dragging {
+  contain: strict;
+  will-change: transform;
+  z-index: 1000;
+  /* 禁用所有动画和过渡 */
+  animation: none !important;
+  transition: none !important;
+}
+
+/* Modern Canvas Grid */
+.canvas-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.4;
+  z-index: 0;
+  pointer-events: none;
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(rgba(102, 126, 234, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(102, 126, 234, 0.1) 1px, transparent 1px);
+  background-position: 0 0, 0 0;
+  /* 移除过渡效果 */
+}
+
+/* Enhanced grid dots for modern feel - 简化动画 */
+.canvas-grid::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: radial-gradient(circle, rgba(102, 126, 234, 0.15) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.6;
+  /* 移除动画，提升性能 */
+}
+
+/* 超高性能任务包装器 */
+.task-wrapper {
+  position: absolute;
+  cursor: grab;
+  user-select: none;
+  z-index: 1;
+  contain: strict; /* 严格隔离，最大化性能 */
+  transform: translate3d(0, 0, 0);
+  /* 简化进入动画 */
+  animation: taskFadeIn 0.3s ease-out;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  will-change: auto;
+  /* GPU层优化 */
+  isolation: isolate;
+  transform-style: preserve-3d;
+}
+
+@keyframes taskFadeIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.task-wrapper:active {
+  cursor: grabbing;
+}
+
+/* 减少hover效果的复杂度 */
+.task-wrapper:hover:not(.dragging) {
+  z-index: 10;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.1));
+  transform: translate3d(0, -2px, 0);
+  transition: all 0.2s ease-out;
+}
+
+/* Smooth transitions when not dragging */
+.task-wrapper:not(.dragging) {
+  transition: 
+    transform 0.2s ease-out,
+    filter 0.2s ease-out;
+}
+
+/* Hardware acceleration for dragging */
+.task-wrapper.dragging {
+  will-change: transform;
+  transition: none !important;
+  z-index: 1001;
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.2));
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  /* 不要覆盖transform，让JS动态设置的位置生效 */
+}
+
+/* Enhanced Island Headers */
+.island-headers {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.island-header {
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid rgba(102, 126, 234, 0.3);
+  border-radius: 16px;
+  padding: 16px 20px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    0 4px 16px rgba(102, 126, 234, 0.1);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  backdrop-filter: blur(20px);
+  max-height: 120px;
+  overflow: hidden;
+  color: #1a202c;
+  animation: islandSlideIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-bottom: 4px solid rgba(102, 126, 234, 0.6);
+}
+
+@keyframes islandSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.island-header:hover {
+  transform: translateY(-6px) scale(1.03);
+  box-shadow: 
+    0 16px 48px rgba(0, 0, 0, 0.15), 
+    0 8px 24px rgba(102, 126, 234, 0.2);
+  border-color: rgba(102, 126, 234, 0.6);
+  background: rgba(255, 255, 255, 0.98);
+  border-bottom-color: rgba(102, 126, 234, 0.8);
+}
+
+.island-header:active {
+  transform: translateY(-3px) scale(1.01);
+  transition: all 0.2s ease;
+}
+
+.island-header.collapsed {
+  opacity: 0.6;
+  transform: scale(0.95);
+  filter: grayscale(0.3);
+}
+
+.island-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 8px;
+  color: #1a202c;
+}
+
+.island-icon {
+  font-size: 20px;
+  animation: islandIconFloat 3s ease-in-out infinite;
+}
+
+@keyframes islandIconFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+.island-name {
+  color: #1a202c;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.island-count {
+  color: rgba(107, 114, 128, 0.8);
+  font-size: 14px;
+  font-weight: 500;
+  background: rgba(102, 126, 234, 0.1);
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+.island-keywords {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  max-height: 60px;
+  overflow: hidden;
+}
+
+.keyword-tag {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  color: rgba(102, 126, 234, 0.8);
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: keywordFadeIn 0.4s ease-out;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+@keyframes keywordFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.island-header:hover .keyword-tag {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+  color: rgba(102, 126, 234, 1);
+  transform: translateY(-2px) scale(1.05);
+  border-color: rgba(102, 126, 234, 0.4);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+/* Enhanced Connection Mode Styles */
+:deep(.connection-source) {
+  box-shadow: 
+    0 0 0 4px rgba(102, 126, 234, 0.3), 
+    0 0 20px rgba(102, 126, 234, 0.2),
+    0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 3px solid rgba(102, 126, 234, 0.8);
+  animation: connectionPulse 2s ease-in-out infinite;
+  transform: scale(1.05);
+}
+
+@keyframes connectionPulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 0 4px rgba(102, 126, 234, 0.3), 
+      0 0 20px rgba(102, 126, 234, 0.2),
+      0 8px 32px rgba(0, 0, 0, 0.1);
+  }
+  50% {
+    box-shadow: 
+      0 0 0 8px rgba(102, 126, 234, 0.4), 
+      0 0 30px rgba(102, 126, 234, 0.3),
+      0 12px 48px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.canvas-container.connection-mode {
+  cursor: crosshair !important;
+}
+
+.canvas-container.connection-mode .canvas-grid {
+  opacity: 0.6;
+}
+
+:deep(.task-card):hover.connection-target {
+  border: 3px solid rgba(16, 185, 129, 0.8);
+  box-shadow: 
+    0 0 0 3px rgba(16, 185, 129, 0.2),
+    0 8px 32px rgba(16, 185, 129, 0.1);
+  transform: scale(1.03);
+}
+
+/* Enhanced Smart Task Creation FAB */
+.smart-creation-fab-container {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  z-index: 1000;
+}
+
+.smart-creation-fab {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  box-shadow: 
+    0 8px 32px rgba(102, 126, 234, 0.4),
+    0 4px 16px rgba(102, 126, 234, 0.2);
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 700;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: translateY(0);
+  backdrop-filter: blur(20px);
+  min-width: 160px;
+  justify-content: center;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.smart-creation-fab:hover {
+  transform: translateY(-6px) scale(1.05);
+  box-shadow: 
+    0 16px 48px rgba(102, 126, 234, 0.6),
+    0 8px 24px rgba(102, 126, 234, 0.3);
+  background: linear-gradient(135deg, #5a6fd8 0%, #6b5b95 100%);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.smart-creation-fab:active {
+  transform: translateY(-3px) scale(1.02);
+  transition: all 0.2s ease;
+}
+
+.fab-icon {
+  font-size: 20px;
+  animation: fabIconBounce 2s ease-in-out infinite;
+}
+
+@keyframes fabIconBounce {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-2px) rotate(-5deg);
+  }
+  75% {
+    transform: translateY(-1px) rotate(5deg);
+  }
+}
+
+.fab-label {
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-size: 14px;
+}
+
+/* Enhanced Performance Optimizations */
+.sticky-canvas,
+.canvas-content,
+.task-wrapper {
+  contain: layout style paint;
+}
+
+/* 画布平移性能优化 */
+.sticky-canvas.panning {
+  pointer-events: none; /* 平移时减少事件处理 */
+}
+
+.sticky-canvas.panning .canvas-content {
+  will-change: transform;
+  backface-visibility: hidden;
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+/* 平移时暂停任务卡片的hover效果以提高性能 */
+.sticky-canvas.panning .task-wrapper {
+  pointer-events: none;
+  will-change: auto; /* 平移时不需要单独的transform优化 */
+}
+
+.sticky-canvas.panning .task-wrapper:hover {
+  transform: none !important; /* 禁用hover效果 */
+  transition: none !important;
+}
+
+.task-wrapper {
+  will-change: transform, left, top;
+}
+
+.task-wrapper:hover {
+  will-change: transform, filter;
+}
+
+/* Enhanced Accessibility */
+.island-header:focus {
+  outline: 3px solid rgba(102, 126, 234, 0.6);
+  outline-offset: 2px;
+}
+
+.smart-creation-fab:focus {
+  outline: 3px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 3px;
+}
+
+/* Enhanced Responsive Design */
+@media (max-width: 768px) {
+  .island-header {
+    padding: 12px 16px;
+    max-height: 100px;
+  }
+  
+  .island-title {
+    font-size: 14px;
+  }
+  
+  .island-count {
+    font-size: 12px;
+  }
+  
+  .keyword-tag {
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+  
+  .smart-creation-fab {
+    padding: 14px 18px;
+    font-size: 14px;
+    min-width: 130px;
+    bottom: 20px;
+    right: 20px;
+  }
+  
+  .fab-icon {
+    font-size: 18px;
+  }
+  
+  .fab-label {
+    font-size: 12px;
+  }
+}
+
+/* Enhanced Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .sticky-canvas {
+    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+  }
+  
+  .canvas-grid {
+    background-image: 
+      linear-gradient(rgba(102, 126, 234, 0.2) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(102, 126, 234, 0.2) 1px, transparent 1px);
+  }
+  
+  .canvas-grid::after {
+    background-image: radial-gradient(circle, rgba(102, 126, 234, 0.3) 1px, transparent 1px);
+  }
+  
+  .island-header {
+    background: rgba(31, 41, 55, 0.95);
+    border: 2px solid rgba(102, 126, 234, 0.4);
+    color: #f9fafb;
+  }
+  
+  .island-header:hover {
+    background: rgba(31, 41, 55, 0.98);
+    border-color: rgba(102, 126, 234, 0.6);
+  }
+  
+  .island-name {
+    color: #f9fafb;
+  }
+  
+  .island-count {
+    color: rgba(156, 163, 175, 0.8);
+    background: rgba(102, 126, 234, 0.2);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+  }
+  
+  .keyword-tag {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+    color: rgba(102, 126, 234, 0.9);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+  }
+}
+</style>

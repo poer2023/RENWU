@@ -1,0 +1,172 @@
+/* ===========================================
+   CSS Variables - Design System
+   =========================================== */
+
+:root {
+  /* ============ Colors ============ */
+  /* Primary Colors */
+  --color-primary: #409EFF;
+  --color-primary-light: #79BBFF;
+  --color-primary-dark: #337ECC;
+  
+  /* Success Colors */
+  --color-success: #67C23A;
+  --color-success-light: #95D475;
+  --color-success-dark: #529B2E;
+  
+  /* Warning Colors */
+  --color-warning: #E6A23C;
+  --color-warning-light: #ELBAD3;
+  --color-warning-dark: #B88230;
+  
+  /* Danger Colors */
+  --color-danger: #F56C6C;
+  --color-danger-light: #F89898;
+  --color-danger-dark: #DD6161;
+  
+  /* Info Colors */
+  --color-info: #909399;
+  --color-info-light: #B1B3B8;
+  --color-info-dark: #82848A;
+  
+  /* Priority Colors */
+  --priority-critical: #ff4d4f;
+  --priority-high: #fa8c16;
+  --priority-medium: #1890ff;
+  --priority-low: #52c41a;
+  --priority-backlog: #8c8c8c;
+  
+  /* Workload Colors */
+  --workload-green: #52c41a;
+  --workload-yellow: #faad14;
+  --workload-red: #ff4d4f;
+  
+  /* Background Colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f7fa;
+  --bg-tertiary: #ebeef5;
+  --bg-quaternary: #e4e7ed;
+  
+  /* Text Colors */
+  --text-primary: #303133;
+  --text-regular: #606266;
+  --text-secondary: #909399;
+  --text-placeholder: #c0c4cc;
+  
+  /* Border Colors */
+  --border-lighter: #f2f6fc;
+  --border-light: #ebeef5;
+  --border-base: #dcdfe6;
+  --border-dark: #d4d7de;
+  --border-darker: #cdd0d6;
+  
+  /* ============ Spacing ============ */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px;
+  --spacing-xxl: 24px;
+  --spacing-xxxl: 32px;
+  
+  /* ============ Typography ============ */
+  --font-family-base: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
+  --font-family-mono: "SF Mono", Monaco, Inconsolata, "Roboto Mono", "Source Code Pro", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  
+  --font-size-xs: 10px;
+  --font-size-sm: 12px;
+  --font-size-base: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-xxl: 20px;
+  --font-size-xxxl: 24px;
+  
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  --line-height-condensed: 1.25;
+  --line-height-base: 1.5;
+  --line-height-relaxed: 1.75;
+  
+  /* ============ Shadows ============ */
+  --shadow-light: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
+  --shadow-base: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
+  --shadow-dark: 0 4px 8px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
+  --shadow-heavy: 0 8px 16px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
+  
+  /* ============ Border Radius ============ */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-base: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-round: 50%;
+  
+  /* ============ Transitions ============ */
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.3s ease;
+  --transition-slow: 0.5s ease;
+  
+  /* ============ Z-Index ============ */
+  --z-dropdown: 1000;
+  --z-sticky: 1010;
+  --z-fixed: 1020;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  --z-top: 1080;
+  
+  /* ============ Layout ============ */
+  --header-height: 60px;
+  --sidebar-width: 240px;
+  --sidebar-collapsed-width: 64px;
+  --fab-size: 56px;
+  --fab-sub-size: 40px;
+  --context-toolbar-height: 48px;
+  
+  /* ============ Canvas ============ */
+  --canvas-grid-size: 20px;
+  --canvas-grid-color: #f0f0f0;
+  --task-card-width: 200px;
+  --task-card-min-height: 120px;
+  --task-card-gap: 20px;
+  
+  /* ============ Timeline ============ */
+  --timeline-item-height: 80px;
+  --timeline-line-width: 2px;
+  --timeline-marker-size: 12px;
+  
+  /* ============ Breakpoints ============ */
+  --breakpoint-xs: 480px;
+  --breakpoint-sm: 768px;
+  --breakpoint-md: 992px;
+  --breakpoint-lg: 1200px;
+  --breakpoint-xl: 1920px;
+}
+
+/* Dark Theme Variables */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d30;
+    --bg-tertiary: #3e3e42;
+    --bg-quaternary: #4a4a4f;
+    
+    --text-primary: #cccccc;
+    --text-regular: #969696;
+    --text-secondary: #6c6c6c;
+    --text-placeholder: #505050;
+    
+    --border-lighter: #3a3a3a;
+    --border-light: #484848;
+    --border-base: #5a5a5a;
+    --border-dark: #6a6a6a;
+    --border-darker: #7a7a7a;
+    
+    --canvas-grid-color: #404040;
+  }
+} 

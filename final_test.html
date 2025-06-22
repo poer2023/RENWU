@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>最终中键拖动测试</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+        .status { 
+            background: #007bff; 
+            color: white; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .instructions {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #007bff;
+        }
+        .app-container {
+            border: 3px solid #28a745;
+            border-radius: 10px;
+            height: 600px;
+            overflow: hidden;
+            position: relative;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-width: 400px;
+            z-index: 1000;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="status" id="status">
+        🔧 正在加载修复后的TaskWall应用...
+    </div>
+
+    <div class="instructions">
+        <h3>📋 测试说明</h3>
+        <ol>
+            <li><strong>等待加载</strong>：等待下方应用完全加载（绿色边框表示正常）</li>
+            <li><strong>打开控制台</strong>：按 F12 → Console 标签</li>
+            <li><strong>中键拖动</strong>：在画布任何地方按住鼠标中键拖动</li>
+            <li><strong>查看日志</strong>：观察控制台是否显示拖动相关日志</li>
+            <li><strong>调试面板</strong>：点击右下角蓝色调试按钮获取详细信息</li>
+        </ol>
+        
+        <h4>🎯 预期结果</h4>
+        <ul>
+            <li>✅ 控制台显示：<code>🎯 画布鼠标按下事件: 1</code></li>
+            <li>✅ 控制台显示：<code>🚀 开始中键画布拖动</code></li>
+            <li>✅ 画布能够流畅移动</li>
+            <li>✅ 调试面板显示事件统计</li>
+        </ul>
+    </div>
+
+    <div class="app-container">
+        <div class="overlay" id="overlay">
+            📊 修复内容:<br>
+            • 使用原生事件监听器<br>
+            • 移除Vue事件处理干扰<br>
+            • 添加capture和passive配置<br>
+            • 中键拖动在任何位置生效<br>
+            • 添加调试面板实时监控
+        </div>
+        <iframe src="http://localhost:3000" id="appFrame"></iframe>
+    </div>
+
+    <script>
+        const status = document.getElementById('status');
+        const frame = document.getElementById('appFrame');
+        
+        frame.onload = function() {
+            status.innerHTML = '✅ TaskWall应用已加载完成 - 现在可以测试中键拖动功能！';
+            status.style.background = '#28a745';
+            
+            // 3秒后隐藏overlay
+            setTimeout(() => {
+                document.getElementById('overlay').style.display = 'none';
+            }, 5000);
+        };
+        
+        frame.onerror = function() {
+            status.innerHTML = '❌ 应用加载失败 - 请确保服务正在运行';
+            status.style.background = '#dc3545';
+        };
+        
+        // 超时检查
+        setTimeout(() => {
+            if (status.style.background !== 'rgb(40, 167, 69)') {
+                status.innerHTML = '⚠️ 加载超时 - 请检查服务状态或刷新页面';
+                status.style.background = '#ffc107';
+                status.style.color = '#000';
+            }
+        }, 10000);
+    </script>
+</body>
+</html>

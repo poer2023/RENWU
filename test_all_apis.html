@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskWall API 综合测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #555;
+            border-bottom: 2px solid #007AFF;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007AFF;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #0056CC;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            border-left: 4px solid #28a745;
+            background-color: #d4edda;
+        }
+        .error {
+            border-left: 4px solid #dc3545;
+            background-color: #f8d7da;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.success {
+            background-color: #28a745;
+            color: white;
+        }
+        .status.error {
+            background-color: #dc3545;
+            color: white;
+        }
+        .status.pending {
+            background-color: #ffc107;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 TaskWall API 综合测试</h1>
+        
+        <!-- 子任务生成测试 -->
+        <div class="test-section">
+            <h2>🤖 子任务生成 API 测试</h2>
+            <div class="form-group">
+                <label for="taskTitle">任务标题:</label>
+                <input type="text" id="taskTitle" value="开发移动应用后端API" placeholder="输入任务标题">
+            </div>
+            <div class="form-group">
+                <label for="taskDesc">任务描述:</label>
+                <textarea id="taskDesc" placeholder="详细描述任务需求">为移动应用开发后端API，包括用户认证、数据管理、文件上传等功能模块</textarea>
+            </div>
+            <div class="form-group">
+                <label for="maxSub">最大子任务数:</label>
+                <input type="number" id="maxSub" value="5" min="1" max="10">
+            </div>
+            <button onclick="testSubtasks()">🔧 测试子任务生成</button>
+            <span id="subtaskStatus" class="status pending">等待测试</span>
+            <div id="subtaskResult" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- 工作量分析测试 -->
+        <div class="test-section">
+            <h2>📊 工作量分析 API 测试</h2>
+            <div class="form-group">
+                <label for="analysisDate">分析日期:</label>
+                <input type="date" id="analysisDate" value="">
+            </div>
+            <button onclick="testWorkloadAnalysis()">📈 测试工作量分析</button>
+            <span id="workloadStatus" class="status pending">等待测试</span>
+            <div id="workloadResult" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- 批量测试 -->
+        <div class="test-section">
+            <h2>⚡ 批量 API 测试</h2>
+            <button onclick="runAllTests()">🚀 运行所有测试</button>
+            <span id="batchStatus" class="status pending">等待测试</span>
+            <div id="batchResult" class="result" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // 设置默认日期为今天
+        document.getElementById('analysisDate').value = new Date().toISOString().split('T')[0];
+
+        async function testSubtasks() {
+            const statusEl = document.getElementById('subtaskStatus');
+            const resultEl = document.getElementById('subtaskResult');
+            
+            statusEl.textContent = '测试中...';
+            statusEl.className = 'status pending';
+            resultEl.style.display = 'none';
+            
+            try {
+                const title = document.getElementById('taskTitle').value;
+                const description = document.getElementById('taskDesc').value;
+                const maxSubtasks = parseInt(document.getElementById('maxSub').value);
+                
+                console.log('发送子任务生成请求...');
+                const response = await fetch('/api/ai/subtasks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        parent_task_title: title,
+                        parent_task_description: description,
+                        max_subtasks: maxSubtasks
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    statusEl.textContent = '✅ 成功';
+                    statusEl.className = 'status success';
+                    resultEl.className = 'result success';
+                    resultEl.textContent = JSON.stringify(data, null, 2);
+                } else {
+                    throw new Error(data.error || `HTTP ${response.status}`);
+                }
+            } catch (error) {
+                statusEl.textContent = '❌ 失败';
+                statusEl.className = 'status error';
+                resultEl.className = 'result error';
+                resultEl.textContent = `错误: ${error.message}`;
+            }
+            
+            resultEl.style.display = 'block';
+        }
+
+        async function testWorkloadAnalysis() {
+            const statusEl = document.getElementById('workloadStatus');
+            const resultEl = document.getElementById('workloadResult');
+            
+            statusEl.textContent = '测试中...';
+            statusEl.className = 'status pending';
+            resultEl.style.display = 'none';
+            
+            try {
+                const date = document.getElementById('analysisDate').value;
+                
+                console.log('发送工作量分析请求...');
+                const response = await fetch('/api/ai/v3/workload/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        date: date
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    statusEl.textContent = '✅ 成功';
+                    statusEl.className = 'status success';
+                    resultEl.className = 'result success';
+                    
+                    // 格式化显示工作量分析结果
+                    const summary = {
+                        '总工时': `${data.total_hours} 小时`,
+                        '工作负载': `${data.workload_percentage}%`,
+                        '容量': `${data.capacity_hours} 小时`,
+                        '任务数量': data.tasks_count,
+                        '冲突级别': data.conflict_level,
+                        '分析日期': data.analysis_date
+                    };
+                    
+                    resultEl.textContent = `工作量分析摘要:\n${JSON.stringify(summary, null, 2)}\n\n完整数据:\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    throw new Error(data.error || `HTTP ${response.status}`);
+                }
+            } catch (error) {
+                statusEl.textContent = '❌ 失败';
+                statusEl.className = 'status error';
+                resultEl.className = 'result error';
+                resultEl.textContent = `错误: ${error.message}`;
+            }
+            
+            resultEl.style.display = 'block';
+        }
+
+        async function runAllTests() {
+            const statusEl = document.getElementById('batchStatus');
+            const resultEl = document.getElementById('batchResult');
+            
+            statusEl.textContent = '运行中...';
+            statusEl.className = 'status pending';
+            resultEl.style.display = 'none';
+            
+            const results = [];
+            
+            try {
+                // 测试子任务生成
+                results.push('=== 子任务生成测试 ===');
+                try {
+                    const subtaskResponse = await fetch('/api/ai/subtasks', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            parent_task_title: "批量测试任务",
+                            parent_task_description: "用于批量测试的示例任务",
+                            max_subtasks: 3
+                        })
+                    });
+                    const subtaskData = await subtaskResponse.json();
+                    results.push(`✅ 子任务生成: ${subtaskData.success ? '成功' : '失败'}`);
+                    if (subtaskData.subtasks) {
+                        results.push(`   生成了 ${subtaskData.subtasks.length} 个子任务`);
+                    }
+                } catch (error) {
+                    results.push(`❌ 子任务生成: 失败 - ${error.message}`);
+                }
+                
+                // 测试工作量分析
+                results.push('\n=== 工作量分析测试 ===');
+                try {
+                    const workloadResponse = await fetch('/api/ai/v3/workload/analyze', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            date: new Date().toISOString().split('T')[0]
+                        })
+                    });
+                    const workloadData = await workloadResponse.json();
+                    results.push(`✅ 工作量分析: ${workloadData.success ? '成功' : '失败'}`);
+                    if (workloadData.success) {
+                        results.push(`   总工时: ${workloadData.total_hours}h, 负载: ${workloadData.workload_percentage}%`);
+                    }
+                } catch (error) {
+                    results.push(`❌ 工作量分析: 失败 - ${error.message}`);
+                }
+                
+                results.push('\n=== 测试总结 ===');
+                results.push('所有API测试完成！');
+                
+                statusEl.textContent = '✅ 完成';
+                statusEl.className = 'status success';
+                resultEl.className = 'result success';
+                
+            } catch (error) {
+                results.push(`\n❌ 批量测试失败: ${error.message}`);
+                statusEl.textContent = '❌ 失败';
+                statusEl.className = 'status error';
+                resultEl.className = 'result error';
+            }
+            
+            resultEl.textContent = results.join('\n');
+            resultEl.style.display = 'block';
+        }
+
+        // 页面加载完成时的初始化
+        console.log('TaskWall API 测试页面已加载');
+        console.log('当前时间:', new Date().toLocaleString());
+        console.log('测试目标:');
+        console.log('- 子任务生成 API: /api/ai/subtasks');
+        console.log('- 工作量分析 API: /api/ai/v3/workload/analyze');
+    </script>
+</body>
+</html>

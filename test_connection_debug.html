@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>连线功能调试测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .debug-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .test-steps {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .step {
+            margin: 10px 0;
+            padding: 8px 12px;
+            border-left: 4px solid #007AFF;
+            background-color: white;
+        }
+        .problem {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .solution {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .iframe-container {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: none;
+        }
+        .debug-info {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .code-block {
+            background-color: #f1f3f4;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.fixed {
+            background-color: #28a745;
+            color: white;
+        }
+        .status.issue {
+            background-color: #dc3545;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-container">
+        <h1>🔧 连线功能调试与修复报告</h1>
+        
+        <div class="debug-info">
+            <h2>🔍 问题分析</h2>
+            <p><span class="problem">主要问题：</span>手动连线功能无法正常工作，连接端点不显示</p>
+            
+            <h3>发现的问题：</h3>
+            <div class="step">
+                <strong>1. 连接端点显示问题</strong> <span class="status fixed">已修复</span>
+                <div class="code-block">
+问题：ConnectionPorts 组件有内部的 v-show="visible" 控制，但 TaskCard 没有传递 visible prop
+修复：将 TaskCard 中的 v-show 改为 :visible prop 传递
+</div>
+            </div>
+            
+            <div class="step">
+                <strong>2. 事件传递链条</strong> <span class="status fixed">正常</span>
+                <div class="code-block">
+事件流：ConnectionPorts → TaskCard → TaskRenderer → StickyCanvas → useConnections
+所有环节的事件绑定都正确
+</div>
+            </div>
+            
+            <div class="step">
+                <strong>3. 连接逻辑</strong> <span class="status fixed">完整</span>
+                <div class="code-block">
+useConnections 实现了完整的拖拽连线逻辑：
+- startConnection: 开始连线
+- handleConnectionDrag: 拖拽跟踪  
+- handleConnectionEnd: 结束连线并创建依赖
+</div>
+            </div>
+        </div>
+
+        <div class="debug-info">
+            <h2>🛠️ 修复措施</h2>
+            
+            <div class="step">
+                <strong>修复连接端点显示：</strong>
+                <div class="code-block">
+// 在 TaskCard.vue 中
+// 修改前：
+&lt;ConnectionPorts 
+  v-show="isSelected || isConnecting"
+  :is-connecting="isConnecting"
+/&gt;
+
+// 修改后：
+&lt;ConnectionPorts 
+  :visible="isSelected || isConnecting"
+  :is-active="isConnecting"
+  @start-connection="startConnection"
+/&gt;
+</div>
+            </div>
+        </div>
+
+        <div class="test-steps">
+            <h2>🧪 测试步骤</h2>
+            <div class="step">
+                <strong>1.</strong> 打开 TaskWall 应用（下方 iframe）
+            </div>
+            <div class="step">
+                <strong>2.</strong> 点击选择任一任务卡片
+            </div>
+            <div class="step">
+                <strong>3.</strong> 查看任务卡片四周是否出现蓝色连接点（上、右、下、左）
+            </div>
+            <div class="step">
+                <strong>4.</strong> 按住鼠标左键拖拽任一连接点
+            </div>
+            <div class="step">
+                <strong>5.</strong> 拖拽到另一个任务卡片上释放鼠标
+            </div>
+            <div class="step">
+                <strong>6.</strong> 检查是否成功创建了连线
+            </div>
+        </div>
+
+        <div class="debug-info">
+            <h2>📝 调试信息</h2>
+            <p>如果连线仍然不工作，请检查浏览器控制台输出：</p>
+            <div class="code-block">
+预期的控制台输出：
+1. "StartConnection called: [position] task: [taskId]"
+2. "useConnections: startConnection called with task: [taskId]"  
+3. "连接创建成功: [fromTaskId] -> [toTaskId]"
+</div>
+        </div>
+    </div>
+
+    <div class="debug-container">
+        <h2>🎯 TaskWall 应用测试</h2>
+        <div class="iframe-container">
+            <iframe src="http://localhost:3000" title="TaskWall 应用"></iframe>
+        </div>
+    </div>
+
+    <script>
+        // 监听 iframe 中的消息（如果有的话）
+        window.addEventListener('message', function(event) {
+            if (event.origin === 'http://localhost:3000') {
+                console.log('收到来自 TaskWall 的消息:', event.data);
+            }
+        });
+
+        // 页面加载完成时的初始化
+        console.log('连线功能调试页面已加载');
+        console.log('修复完成时间:', new Date().toLocaleString());
+        
+        // 提供一些调试帮助函数
+        window.debugConnection = {
+            checkPorts: function() {
+                console.log('检查连接端点是否可见...');
+                // 这里可以添加检查逻辑
+            },
+            testConnection: function() {
+                console.log('开始连线测试...');
+                // 这里可以添加自动化测试逻辑
+            }
+        };
+    </script>
+</body>
+</html>

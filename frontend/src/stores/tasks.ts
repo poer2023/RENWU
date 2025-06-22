@@ -9,6 +9,9 @@ export interface Task {
   urgency: number
   module_id?: number
   parent_id?: number
+  position_x?: number
+  position_y?: number
+  estimated_hours?: number
   created_at: string
   updated_at: string
   ocr_src?: string
@@ -33,6 +36,7 @@ export interface TaskDependency {
   id: number
   from_task_id: number
   to_task_id: number
+  dependency_type: string
   created_at: string
 }
 
@@ -49,6 +53,14 @@ export const useTaskStore = defineStore('tasks', () => {
   const searchQuery = ref('')
   const searchResults = ref<Task[]>([])
   const highlightedTaskId = ref<number | null>(null)
+  
+  // 撤回功能相关状态
+  const deletedTaskHistory = ref<{
+    task: Task
+    dependencies: TaskDependency[]
+    timestamp: number
+  }[]>([])
+  const maxUndoHistory = 10 // 最多保存10次删除记录
 
   // Computed properties
   const tasksByModule = computed(() => {
@@ -83,8 +95,8 @@ export const useTaskStore = defineStore('tasks', () => {
   async function fetchTasks() {
     loading.value = true
     try {
-      console.log('Fetching tasks from:', `${API_BASE}/tasks/`)
-      const response = await axios.get<Task[]>(`${API_BASE}/tasks/`)
+      console.log('Fetching tasks from:', `${API_BASE}/tasks`)
+      const response = await axios.get<Task[]>(`${API_BASE}/tasks`)
       console.log('Tasks fetched successfully:', response.data)
       console.log('Number of tasks:', response.data.length)
       
@@ -103,7 +115,7 @@ export const useTaskStore = defineStore('tasks', () => {
 
   async function fetchModules() {
     try {
-      const response = await axios.get<Module[]>(`${API_BASE}/modules/`)
+      const response = await axios.get<Module[]>(`${API_BASE}/modules`)
       modules.value = response.data
     } catch (err) {
       console.error('Error fetching modules:', err)
@@ -114,7 +126,7 @@ export const useTaskStore = defineStore('tasks', () => {
     loading.value = true
     try {
       console.log('Creating task:', taskData)
-      const response = await axios.post<Task>(`${API_BASE}/tasks/`, taskData)
+      const response = await axios.post<Task>(`${API_BASE}/tasks`, taskData)
       console.log('Task created successfully:', response.data)
       
       // Add the new task to the local tasks array
@@ -161,11 +173,32 @@ export const useTaskStore = defineStore('tasks', () => {
   async function deleteTask(taskId: number) {
     loading.value = true
     try {
+      // 保存删除前的状态，用于撤回功能
+      const taskToDelete = tasks.value.find(t => t.id === taskId)
+      const relatedDependencies = dependencies.value.filter(
+        d => d.from_task_id === taskId || d.to_task_id === taskId
+      )
+      
+      // 删除任务
       await axios.delete(`${API_BASE}/tasks/${taskId}`)
+      
+      // 清理本地状态
       tasks.value = tasks.value.filter(t => t.id !== taskId)
+      
+      // 清理相关的连线（依赖关系）
+      dependencies.value = dependencies.value.filter(
+        d => d.from_task_id !== taskId && d.to_task_id !== taskId
+      )
+      
       if (selectedTask.value?.id === taskId) {
         selectedTask.value = null
       }
+      
+      // 保存删除信息用于撤回
+      if (taskToDelete) {
+        saveDeletedTaskForUndo(taskToDelete, relatedDependencies)
+      }
+      
       error.value = null
     } catch (err) {
       error.value = 'Failed to delete task'
@@ -178,7 +211,7 @@ export const useTaskStore = defineStore('tasks', () => {
 
   async function createModule(moduleData: Partial<Module>) {
     try {
-      const response = await axios.post<Module>(`${API_BASE}/modules/`, moduleData)
+      const response = await axios.post<Module>(`${API_BASE}/modules`, moduleData)
       modules.value.push(response.data)
       return response.data
     } catch (err) {
@@ -215,7 +248,7 @@ export const useTaskStore = defineStore('tasks', () => {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      const response = await axios.post(`${API_BASE}/ocr/`, formData, {
+      const response = await axios.post(`${API_BASE}/ocr`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -277,8 +310,7 @@ export const useTaskStore = defineStore('tasks', () => {
     }
 
     try {
-      const response = await axios.post(`${API_BASE}/ai/subtasks/generate`, {
-        task_id: taskId,
+      const response = await axios.post(`${API_BASE}/ai/subtasks`, {
         parent_task_title: task.title,
         parent_task_description: task.description,
         max_subtasks: 5, // As per PRD
@@ -327,7 +359,7 @@ export const useTaskStore = defineStore('tasks', () => {
   async function getWorkloadAnalysis(date?: string) {
     loading.value = true
     try {
-      const response = await axios.post(`${API_BASE}/workload/analyze`, { date })
+      const response = await axios.post(`${API_BASE}/ai/workload-analysis`, { date })
       return response.data
     } catch (err) {
       error.value = 'Workload analysis failed'
@@ -425,7 +457,7 @@ export const useTaskStore = defineStore('tasks', () => {
   // Dependency management functions
   async function fetchDependencies() {
     try {
-      const response = await axios.get<TaskDependency[]>(`${API_BASE}/dependencies/`)
+      const response = await axios.get<TaskDependency[]>(`${API_BASE}/dependencies`)
       dependencies.value = response.data
       error.value = null
     } catch (err) {
@@ -435,12 +467,9 @@ export const useTaskStore = defineStore('tasks', () => {
     }
   }
 
-  async function createDependency(fromTaskId: number, toTaskId: number) {
+  async function createDependency(dependencyData: { from_task_id: number, to_task_id: number, dependency_type?: string }) {
     try {
-      const response = await axios.post<TaskDependency>(`${API_BASE}/dependencies/`, {
-        from_task_id: fromTaskId,
-        to_task_id: toTaskId
-      })
+      const response = await axios.post<TaskDependency>(`${API_BASE}/dependencies`, dependencyData)
       dependencies.value.push(response.data)
       error.value = null
       return response.data
@@ -470,6 +499,74 @@ export const useTaskStore = defineStore('tasks', () => {
       incoming: dependencies.value.filter(d => d.to_task_id === taskId),
       outgoing: dependencies.value.filter(d => d.from_task_id === taskId)
     }
+  }
+
+  // 撤回功能实现
+  function saveDeletedTaskForUndo(task: Task, dependencies: TaskDependency[]) {
+    deletedTaskHistory.value.unshift({
+      task,
+      dependencies,
+      timestamp: Date.now()
+    })
+    
+    // 保持历史记录在限制范围内
+    if (deletedTaskHistory.value.length > maxUndoHistory) {
+      deletedTaskHistory.value = deletedTaskHistory.value.slice(0, maxUndoHistory)
+    }
+  }
+
+  async function undoDeleteTask() {
+    if (deletedTaskHistory.value.length === 0) {
+      throw new Error('No tasks to undo')
+    }
+
+    const deletedItem = deletedTaskHistory.value.shift()!
+    loading.value = true
+
+    try {
+      // 重新创建任务
+      const recreatedTask = await createTask({
+        title: deletedItem.task.title,
+        description: deletedItem.task.description,
+        urgency: deletedItem.task.urgency,
+        module_id: deletedItem.task.module_id,
+        parent_id: deletedItem.task.parent_id,
+        position_x: deletedItem.task.position_x,
+        position_y: deletedItem.task.position_y,
+        estimated_hours: deletedItem.task.estimated_hours
+      })
+
+      // 重新创建依赖关系
+      for (const dependency of deletedItem.dependencies) {
+        try {
+          await createDependency({
+            from_task_id: dependency.from_task_id === deletedItem.task.id ? recreatedTask.id : dependency.from_task_id,
+            to_task_id: dependency.to_task_id === deletedItem.task.id ? recreatedTask.id : dependency.to_task_id
+          })
+        } catch (depError) {
+          console.warn('Failed to recreate dependency:', depError)
+          // 继续处理其他依赖关系，不因为单个依赖失败而终止
+        }
+      }
+
+      return recreatedTask
+    } catch (err) {
+      error.value = 'Failed to undo delete task'
+      console.error('Error undoing delete task:', err)
+      // 如果撤回失败，将记录放回历史中
+      deletedTaskHistory.value.unshift(deletedItem)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function canUndo() {
+    return deletedTaskHistory.value.length > 0
+  }
+
+  function clearUndoHistory() {
+    deletedTaskHistory.value = []
   }
 
   return {
@@ -525,6 +622,11 @@ export const useTaskStore = defineStore('tasks', () => {
     findSimilarTasks,
     generateWeeklyReport,
     analyzeTaskRisks,
-    createThemeIslands
+    createThemeIslands,
+    
+    // Undo functionality
+    undoDeleteTask,
+    canUndo,
+    clearUndoHistory
   }
 })

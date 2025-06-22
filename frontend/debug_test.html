@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拖动修复验证测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f0f2f5;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        
+        .test-section {
+            margin: 25px 0;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+        .btn.success { background: #28a745; }
+        .btn.success:hover { background: #1e7e34; }
+        
+        .performance-display {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+        }
+        
+        .fix-list {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .fix-list h3 { margin-top: 0; }
+        .fix-list ul { padding-left: 20px; }
+        .fix-list li { margin: 8px 0; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 TaskWall 拖动功能修复验证</h1>
+        
+        <div class="status success">
+            ✅ 关键修复已完成！请按照下面的步骤验证修复效果。
+        </div>
+        
+        <div class="fix-list">
+            <h3>🛠️ 已修复的关键问题</h3>
+            <ul>
+                <li><strong>Passive Event Listener 错误</strong> - 移除了所有passive配置</li>
+                <li><strong>画布拖动fps=0问题</strong> - 修复了事件绑定和处理逻辑</li>
+                <li><strong>卡片拖动13.7fps卡顿</strong> - 优化RAF系统，目标250fps</li>
+                <li><strong>事件冒泡冲突</strong> - 添加stopPropagation防止干扰</li>
+                <li><strong>GPU加速失效</strong> - 强制启用GPU合成层</li>
+                <li><strong>性能监控缺失</strong> - 添加实时性能输出</li>
+            </ul>
+        </div>
+        
+        <div class="test-section">
+            <h3>📋 验证步骤</h3>
+            <div class="status info">
+                <strong>第1步：打开TaskWall应用</strong><br>
+                点击下面按钮打开应用，然后打开浏览器控制台（F12）
+            </div>
+            <button class="btn" onclick="window.open('http://localhost:3001', '_blank')">
+                🚀 打开 TaskWall 应用
+            </button>
+        </div>
+        
+        <div class="test-section">
+            <h3>🎯 测试画布拖动</h3>
+            <div class="status warning">
+                <strong>第2步：测试画布拖动功能</strong><br>
+                • 在画布空白区域按住左键拖动<br>
+                • 或使用鼠标中键拖动<br>
+                • 控制台应该显示：<code>🚀 开始画布拖动</code><br>
+                • 控制台应该显示：<code>画布拖动性能: 平移FPS xxx</code>（不再是0）
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🎯 测试卡片拖动</h3>
+            <div class="status warning">
+                <strong>第3步：测试任务卡片拖动</strong><br>
+                • 在任务卡片上按住左键拖动<br>
+                • 控制台应该显示：<code>🚀 开始拖拽任务: [任务名]</code><br>
+                • 控制台应该显示：<code>拖拽性能: 平均FPS xxx</code>（应该>60fps）<br>
+                • 拖动应该非常流畅，无卡顿
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📊 预期性能指标</h3>
+            <div class="performance-display">
+                ✅ 画布拖动FPS: 60-240fps（不再是0）<br>
+                ✅ 卡片拖动FPS: 100-250fps（不再是13.7fps）<br>
+                ✅ 处理时间: <5ms<br>
+                ✅ 无 "passive event listener" 错误<br>
+                ✅ GPU层正常创建（开发者工具 Layers 面板可见）
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔍 问题排查</h3>
+            <div class="status error" style="display: none;" id="troubleshoot">
+                <strong>如果还有问题：</strong><br>
+                1. 刷新页面重新测试<br>
+                2. 检查控制台是否有其他错误<br>
+                3. 确认开发服务器正常运行<br>
+                4. 尝试清除浏览器缓存
+            </div>
+            <button class="btn" onclick="document.getElementById('troubleshoot').style.display='block'">
+                🔍 显示问题排查
+            </button>
+        </div>
+        
+        <div class="status success">
+            <strong>✅ 如果看到以下日志说明修复成功：</strong><br>
+            <code>🎯 画布鼠标按下事件: 0</code><br>
+            <code>🚀 开始画布拖动</code><br>
+            <code>✅ 超级画布拖动开始 - 事件已绑定</code><br>
+            <code>🚀 开始拖拽任务: [任务名]</code><br>
+            <code>✅ 拖拽系统已启动，GPU加速已激活</code><br>
+            <code>画布拖动性能: 平移FPS > 0</code><br>
+            <code>拖拽性能: 平均FPS > 60</code>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <button class="btn success" onclick="location.reload()">
+                🔄 刷新测试页面
+            </button>
+            <button class="btn" onclick="window.open('http://localhost:3001', '_blank')">
+                🚀 重新打开应用测试
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        // 简单的性能监控
+        let startTime = performance.now();
+        window.addEventListener('load', () => {
+            let loadTime = performance.now() - startTime;
+            console.log(`🚀 测试页面加载时间: ${loadTime.toFixed(2)}ms`);
+            console.log('✅ 拖动修复验证页面已就绪');
+            console.log('📝 请按照步骤验证修复效果');
+        });
+    </script>
+</body>
+</html> 

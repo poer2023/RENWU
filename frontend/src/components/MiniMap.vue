@@ -78,8 +78,8 @@ const MINIMAP_HEIGHT = 120
 const scale = computed(() => {
   const scaleX = MINIMAP_WIDTH / props.canvasWidth
   const scaleY = MINIMAP_HEIGHT / props.canvasHeight
-  // 使用更小的缩放比例，确保能看到整个画布
-  return Math.min(scaleX, scaleY, 0.02) // 从0.2改为0.02，显示更大的画布区域
+  // 确保整个画布能在minimap中显示，为6000x6000画布调整缩放
+  return Math.min(scaleX, scaleY) // 移除最大值限制，让它自动适应新的画布尺寸
 })
 
 const canvasWidth = computed(() => props.canvasWidth * scale.value)

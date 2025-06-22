@@ -1,18 +1,15 @@
-from fastapi import FastAPI, Depends, UploadFile, File, HTTPException
+import os
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import SQLModel, Session
+from datetime import datetime, timedelta, date
 from typing import List
 
 from .deps import engine, get_db
 from .models import Task, Module, History, Setting, TaskDependency, Island
 from .crud import TaskCRUD, ModuleCRUD, HistoryCRUD, SettingCRUD, TaskDependencyCRUD, IslandCRUD
 from .schemas import (
-    TaskCreate, TaskRead, TaskUpdate,
-    ModuleCreate, ModuleRead,
-    HistoryRead,
-    SettingCreate, SettingRead,
     AIParseRequest, AIParseResponse,
     AIAssistantRequest, AIAssistantResponse,
     AISubtaskRequest, AISubtaskResponse,
@@ -21,12 +18,10 @@ from .schemas import (
     SimilarTaskRequest, SimilarTaskResponse,
     RiskAnalysisRequest, RiskAnalysisResponse,
     ThemeIslandRequest, ThemeIslandResponse,
-    TaskDependencyCreate, TaskDependencyRead,
-    IslandCreate, IslandRead
+    TaskUpdate, IslandRead
 )
-from .utils.ocr import extract_text
+from .routers import ai_v3, tasks, modules, dependencies, settings, history, export_backup, ocr
 from .utils.ai_client import ask, assistant_command, generate_subtasks, generate_weekly_report, find_similar_tasks, analyze_task_risks, create_theme_islands
-from .utils.export import ExportService
 from .utils.backup import backup_service
 
 # Create database tables
@@ -60,6 +55,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include routers
+app.include_router(ai_v3.router)
+app.include_router(tasks.router)
+app.include_router(modules.router)
+app.include_router(dependencies.router)
+app.include_router(settings.router)
+app.include_router(history.router)
+app.include_router(export_backup.router)
+app.include_router(ocr.router)
+
 # Mount static files for exports/backups
 app.mount("/static", StaticFiles(directory="data"), name="static")
 
@@ -72,122 +77,19 @@ async def health_check():
 async def root():
     return {"message": "TaskWall API", "status": "running"}
 
-# Task endpoints
-@app.post("/tasks/", response_model=TaskRead)
-async def create_task(task_in: TaskCreate, db: Session = Depends(get_db)):
-    task = Task(**task_in.dict())
-    return TaskCRUD.create(db, task)
-
-@app.get("/tasks/", response_model=List[TaskRead])
-async def read_tasks(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return TaskCRUD.read_all(db, skip=skip, limit=limit)
-
-@app.get("/tasks/{task_id}", response_model=TaskRead)
-async def read_task(task_id: int, db: Session = Depends(get_db)):
-    task = TaskCRUD.read(db, task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return task
-
-@app.patch("/tasks/{task_id}", response_model=TaskRead)
-async def update_task(task_id: int, task_in: TaskUpdate, db: Session = Depends(get_db)):
-    task = TaskCRUD.read(db, task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return TaskCRUD.update(db, task, task_in)
-
-@app.delete("/tasks/{task_id}")
-async def delete_task(task_id: int, db: Session = Depends(get_db)):
-    task = TaskCRUD.read(db, task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    TaskCRUD.delete(db, task)
-    return {"message": "Task deleted successfully"}
-
-# Module endpoints
-@app.post("/modules/", response_model=ModuleRead)
-async def create_module(module_in: ModuleCreate, db: Session = Depends(get_db)):
-    module = Module(**module_in.dict())
-    return ModuleCRUD.create(db, module)
-
-@app.get("/modules/", response_model=List[ModuleRead])
-async def read_modules(db: Session = Depends(get_db)):
-    return ModuleCRUD.read_all(db)
-
-@app.get("/modules/{module_id}", response_model=ModuleRead)
-async def read_module(module_id: int, db: Session = Depends(get_db)):
-    module = ModuleCRUD.read(db, module_id)
-    if not module:
-        raise HTTPException(status_code=404, detail="Module not found")
-    return module
-
-@app.delete("/modules/{module_id}")
-async def delete_module(module_id: int, db: Session = Depends(get_db)):
-    module = ModuleCRUD.read(db, module_id)
-    if not module:
-        raise HTTPException(status_code=404, detail="Module not found")
-    ModuleCRUD.delete(db, module)
-    return {"message": "Module deleted successfully"}
-
-# History endpoints
-@app.get("/tasks/{task_id}/history", response_model=List[HistoryRead])
-async def read_task_history(task_id: int, db: Session = Depends(get_db)):
-    # Verify task exists
-    task = TaskCRUD.read(db, task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return HistoryCRUD.read_by_task(db, task_id)
-
-# Settings endpoints
-@app.get("/settings/", response_model=List[SettingRead])
-async def read_settings(db: Session = Depends(get_db)):
-    return SettingCRUD.read_all(db)
-
-@app.get("/settings/{key}", response_model=SettingRead)
-async def read_setting(key: str, db: Session = Depends(get_db)):
-    setting = SettingCRUD.read(db, key)
-    if not setting:
-        raise HTTPException(status_code=404, detail="Setting not found")
-    return setting
-
-@app.put("/settings/{key}", response_model=SettingRead)  
-async def create_or_update_setting(key: str, request: dict, db: Session = Depends(get_db)):
-    value = request.get("value", "")
-    setting = SettingCRUD.create_or_update(db, key, value)
-    
-    # If this is the Gemini API key, refresh the AI client
-    if key == "gemini_api_key":
-        from .utils.ai_client import ai_client
-        ai_client.refresh_api_key()
-        print(f"Refreshed AI client after API key update")
-    
-    return setting
-
-# OCR endpoint
-@app.post("/ocr/")
-async def ocr_image(file: UploadFile = File(...)):
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File must be an image")
-    
-    try:
-        content = await file.read()
-        text = extract_text(content)
-        return {"text": text, "filename": file.filename}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"OCR processing failed: {str(e)}")
-
-# AI parsing endpoint
-@app.post("/ai/parse", response_model=AIParseResponse)
+# Legacy AI endpoints (for backward compatibility)
+@app.post("/api/ai/parse", response_model=AIParseResponse)
 async def ai_parse(request: AIParseRequest):
+    """AI解析任务（遗留接口）"""
     try:
         tasks = ask(request.prompt)
         return AIParseResponse(tasks=tasks)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI parsing failed: {str(e)}")
 
-# AI assistant endpoint
-@app.post("/ai/assistant", response_model=AIAssistantResponse)
+@app.post("/api/ai/assistant", response_model=AIAssistantResponse)
 async def ai_assistant(request: AIAssistantRequest):
+    """AI助手（遗留接口）"""
     try:
         result = assistant_command(request.command, request.content, request.context)
         return AIAssistantResponse(result=result, success=True)
@@ -198,9 +100,9 @@ async def ai_assistant(request: AIAssistantRequest):
             error=f"AI assistant failed: {str(e)}"
         )
 
-# AI subtask generation endpoint
-@app.post("/ai/subtasks", response_model=AISubtaskResponse)
+@app.post("/api/ai/subtasks", response_model=AISubtaskResponse)
 async def ai_generate_subtasks(request: AISubtaskRequest):
+    """AI生成子任务（遗留接口）"""
     try:
         subtasks = generate_subtasks(
             request.parent_task_title, 
@@ -215,12 +117,10 @@ async def ai_generate_subtasks(request: AISubtaskRequest):
             error=f"Subtask generation failed: {str(e)}"
         )
 
-# Weekly report generation endpoint
-@app.post("/ai/weekly-report", response_model=WeeklyReportResponse)
+@app.post("/api/ai/weekly-report", response_model=WeeklyReportResponse)
 async def ai_generate_weekly_report(request: WeeklyReportRequest, db: Session = Depends(get_db)):
+    """AI生成周报（遗留接口）"""
     try:
-        from datetime import datetime, timedelta
-        
         # Set default dates if not provided
         end_date = datetime.fromisoformat(request.end_date) if request.end_date else datetime.now()
         start_date = datetime.fromisoformat(request.start_date) if request.start_date else end_date - timedelta(days=7)
@@ -257,12 +157,10 @@ async def ai_generate_weekly_report(request: WeeklyReportRequest, db: Session = 
             error=f"Weekly report generation failed: {str(e)}"
         )
 
-# Workload analysis endpoint
-@app.post("/ai/workload-analysis", response_model=WorkloadAnalysisResponse)
+@app.post("/api/ai/workload-analysis", response_model=WorkloadAnalysisResponse)
 async def analyze_workload(request: WorkloadAnalysisRequest, db: Session = Depends(get_db)):
+    """工作量分析（遗留接口）"""
     try:
-        from datetime import datetime, date
-        
         # Parse target date or use today
         target_date = datetime.fromisoformat(request.date).date() if request.date else date.today()
         
@@ -322,9 +220,9 @@ async def analyze_workload(request: WorkloadAnalysisRequest, db: Session = Depen
             error=f"Workload analysis failed: {str(e)}"
         )
 
-# Similar task detection endpoint
-@app.post("/ai/similar-tasks", response_model=SimilarTaskResponse)
+@app.post("/api/ai/similar-tasks", response_model=SimilarTaskResponse)
 async def find_similar_tasks_api(request: SimilarTaskRequest, db: Session = Depends(get_db)):
+    """相似任务检测（遗留接口）"""
     try:
         # Get all existing tasks
         all_tasks = TaskCRUD.read_all(db)
@@ -378,9 +276,9 @@ async def find_similar_tasks_api(request: SimilarTaskRequest, db: Session = Depe
             error=f"Similar task detection failed: {str(e)}"
         )
 
-# Risk analysis endpoint
-@app.post("/ai/risk-analysis", response_model=RiskAnalysisResponse)
+@app.post("/api/ai/risk-analysis", response_model=RiskAnalysisResponse)
 async def analyze_risks(request: RiskAnalysisRequest, db: Session = Depends(get_db)):
+    """风险分析（遗留接口）"""
     try:
         # Get tasks to analyze
         if request.tasks:
@@ -419,9 +317,9 @@ async def analyze_risks(request: RiskAnalysisRequest, db: Session = Depends(get_
             error=f"Risk analysis failed: {str(e)}"
         )
 
-# Theme island clustering endpoint
-@app.post("/ai/theme-islands", response_model=ThemeIslandResponse)
+@app.post("/api/ai/theme-islands", response_model=ThemeIslandResponse)
 async def create_theme_islands_api(request: ThemeIslandRequest, db: Session = Depends(get_db)):
+    """主题岛聚类（遗留接口）"""
     try:
         # Get tasks to analyze
         if request.tasks:
@@ -455,7 +353,7 @@ async def create_theme_islands_api(request: ThemeIslandRequest, db: Session = De
                 new_island = Island(
                     name=island_data["name"],
                     color=island_data["color"],
-                    size=island_data["size"]
+                    size=island_data.get("size", len(island_data.get("tasks", [])))
                 )
                 new_island.set_keywords(island_data.get("keywords", []))
                 saved_island = IslandCRUD.create(db, new_island)
@@ -494,137 +392,8 @@ async def create_theme_islands_api(request: ThemeIslandRequest, db: Session = De
             error=f"Theme island creation failed: {str(e)}"
         )
 
-# Update task island assignment
-@app.put("/tasks/{task_id}/island")
-async def update_task_island(task_id: int, island_id: int, db: Session = Depends(get_db)):
-    try:
-        task = TaskCRUD.read(db, task_id)
-        if not task:
-            raise HTTPException(status_code=404, detail="Task not found")
-        
-        # Set island override
-        task.island_override = island_id
-        TaskCRUD.update(db, task, TaskUpdate(island_override=island_id))
-        
-        return {"success": True, "message": "Task island updated"}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update task island: {str(e)}")
-
-# Get islands
+# Islands endpoint
 @app.get("/islands/", response_model=List[IslandRead])
 def get_islands(db: Session = Depends(get_db)):
-    return IslandCRUD.read_all(db)
-
-# Task Dependencies endpoints
-@app.get("/dependencies/", response_model=List[TaskDependencyRead])
-def get_dependencies(db: Session = Depends(get_db)):
-    return TaskDependencyCRUD.read_all(db)
-
-@app.post("/dependencies/", response_model=TaskDependencyRead)
-def create_dependency(dependency: TaskDependencyCreate, db: Session = Depends(get_db)):
-    # Check if both tasks exist
-    from_task = TaskCRUD.read(db, dependency.from_task_id)
-    to_task = TaskCRUD.read(db, dependency.to_task_id)
-    if not from_task or not to_task:
-        raise HTTPException(status_code=404, detail="One or both tasks not found")
-    
-    # Prevent self-dependency
-    if dependency.from_task_id == dependency.to_task_id:
-        raise HTTPException(status_code=400, detail="Task cannot depend on itself")
-    
-    db_dependency = TaskDependency(**dependency.dict())
-    return TaskDependencyCRUD.create(db, db_dependency)
-
-@app.get("/dependencies/task/{task_id}", response_model=List[TaskDependencyRead])
-def get_task_dependencies(task_id: int, db: Session = Depends(get_db)):
-    task = TaskCRUD.read(db, task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return TaskDependencyCRUD.read_by_task(db, task_id)
-
-@app.delete("/dependencies/{from_task_id}/{to_task_id}")
-def delete_dependency(from_task_id: int, to_task_id: int, db: Session = Depends(get_db)):
-    success = TaskDependencyCRUD.delete(db, from_task_id, to_task_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Dependency not found")
-    return {"message": "Dependency deleted successfully"}
-
-# Export endpoints
-@app.get("/export/json")
-def export_json(db: Session = Depends(get_db)):
-    """Export all data to JSON format"""
-    export_service = ExportService(db)
-    data = export_service.export_to_json()
-    return JSONResponse(
-        content=data,
-        headers={
-            "Content-Disposition": f"attachment; filename=\"{export_service.create_backup_filename('json')}\""
-        }
-    )
-
-@app.get("/export/markdown")
-def export_markdown(db: Session = Depends(get_db)):
-    """Export all data to Markdown format"""
-    export_service = ExportService(db)
-    markdown_content = export_service.export_to_markdown()
-    return JSONResponse(
-        content={"content": markdown_content, "filename": export_service.create_backup_filename('md')},
-        headers={
-            "Content-Type": "application/json"
-        }
-    )
-
-# Backup endpoints
-@app.post("/backup/create")
-def create_manual_backup():
-    """Create a manual backup"""
-    try:
-        json_file, md_file = backup_service.create_backup()
-        return {
-            "message": "Backup created successfully",
-            "files": {
-                "json": json_file,
-                "markdown": md_file
-            }
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Backup failed: {str(e)}")
-
-@app.get("/backup/info")
-def get_backup_info():
-    """Get backup information"""
-    return backup_service.get_backup_info()
-
-@app.get("/backup/history")
-def get_backup_history():
-    """Get backup history"""
-    try:
-        history = backup_service.get_backup_history()
-        return {"backups": history}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load backup history: {str(e)}")
-
-@app.get("/backup/list")
-def get_backup_list():
-    """Get backup list (alias for history)"""
-    try:
-        history = backup_service.get_backup_history()
-        return {"success": True, "backups": history}
-    except Exception as e:
-        return {"success": False, "error": f"Failed to load backup history: {str(e)}"}
-
-@app.post("/backup/configure")
-def configure_backup(interval_hours: int, db: Session = Depends(get_db)):
-    """Configure backup interval"""
-    if interval_hours < 1 or interval_hours > 24:
-        raise HTTPException(status_code=400, detail="Backup interval must be between 1 and 24 hours")
-    
-    # Save to settings
-    SettingCRUD.create_or_update(db, "backup_interval_hours", str(interval_hours))
-    
-    # Restart scheduler with new interval
-    backup_service.start_scheduler(interval_hours)
-    
-    return {"message": f"Backup interval set to {interval_hours} hours"}
+    """获取所有主题岛"""
+    return IslandCRUD.read_all(db) 

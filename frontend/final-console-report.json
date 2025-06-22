@@ -1,0 +1,214 @@
+{
+  "timestamp": "2025-06-21T12:03:51.051Z",
+  "summary": {
+    "totalMessages": 20,
+    "errors": 0,
+    "warnings": 0,
+    "networkErrors": 0
+  },
+  "errors": [],
+  "warnings": [],
+  "networkErrors": [],
+  "allMessages": [
+    {
+      "type": "debug",
+      "text": "[vite] connecting...",
+      "location": {
+        "url": "http://localhost:3000/@vite/client",
+        "lineNumber": 494,
+        "columnNumber": 8
+      },
+      "timestamp": "2025-06-21T12:03:37.738Z"
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected.",
+      "location": {
+        "url": "http://localhost:3000/@vite/client",
+        "lineNumber": 617,
+        "columnNumber": 14
+      },
+      "timestamp": "2025-06-21T12:03:37.749Z"
+    },
+    {
+      "type": "log",
+      "text": "StickyCanvas: tasks prop changed: Proxy(Array)",
+      "location": {
+        "url": "http://localhost:3000/src/components/StickyCanvas.vue",
+        "lineNumber": 22,
+        "columnNumber": 14
+      },
+      "timestamp": "2025-06-21T12:03:37.903Z"
+    },
+    {
+      "type": "log",
+      "text": "StickyCanvas: tasks length: 0",
+      "location": {
+        "url": "http://localhost:3000/src/components/StickyCanvas.vue",
+        "lineNumber": 23,
+        "columnNumber": 14
+      },
+      "timestamp": "2025-06-21T12:03:37.903Z"
+    },
+    {
+      "type": "log",
+      "text": "StickyCanvas: old tasks length: 0",
+      "location": {
+        "url": "http://localhost:3000/src/components/StickyCanvas.vue",
+        "lineNumber": 24,
+        "columnNumber": 14
+      },
+      "timestamp": "2025-06-21T12:03:37.903Z"
+    },
+    {
+      "type": "log",
+      "text": "Home: Starting to fetch data...",
+      "location": {
+        "url": "http://localhost:3000/src/pages/Home.vue",
+        "lineNumber": 763,
+        "columnNumber": 14
+      },
+      "timestamp": "2025-06-21T12:03:37.903Z"
+    },
+    {
+      "type": "log",
+      "text": "Fetching tasks from: /api/tasks/",
+      "location": {
+        "url": "http://localhost:3000/src/stores/tasks.ts",
+        "lineNumber": 41,
+        "columnNumber": 14
+      },
+      "timestamp": "2025-06-21T12:03:37.906Z"
+    },
+    {
+      "type": "log",
+      "text": "Tasks fetched successfully: [Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object]",
+      "location": {
+        "url": "http://localhost:3000/src/stores/tasks.ts",
+        "lineNumber": 43,
+        "columnNumber": 14
+      },
+      "timestamp": "2025-06-21T12:03:37.907Z"
+    },
+    {
+      "type": "log",
+      "text": "Number of tasks: 27",
+      "location": {
+        "url": "http://localhost:3000/src/stores/tasks.ts",
+        "lineNumber": 44,
+        "columnNumber": 14
+      },
+      "timestamp": "2025-06-21T12:03:37.907Z"
+    },
+    {
+      "type": "log",
+      "text": "StickyCanvas: tasks prop changed: Proxy(Array)",
+      "location": {
+        "url": "http://localhost:3000/src/components/StickyCanvas.vue",
+        "lineNumber": 22,
+        "columnNumber": 14
+      },
+      "timestamp": "2025-06-21T12:03:37.907Z"
+    },
+    {
+      "type": "log",
+      "text": "StickyCanvas: tasks length: 27",
+      "location": {
+        "url": "http://localhost:3000/src/components/StickyCanvas.vue",
+        "lineNumber": 23,
+        "columnNumber": 14
+      },
+      "timestamp": "2025-06-21T12:03:37.908Z"
+    },
+    {
+      "type": "log",
+      "text": "StickyCanvas: old tasks length: 0",
+      "location": {
+        "url": "http://localhost:3000/src/components/StickyCanvas.vue",
+        "lineNumber": 24,
+        "columnNumber": 14
+      },
+      "timestamp": "2025-06-21T12:03:37.908Z"
+    },
+    {
+      "type": "log",
+      "text": "StickyCanvas: first task: Proxy(Object)",
+      "location": {
+        "url": "http://localhost:3000/src/components/StickyCanvas.vue",
+        "lineNumber": 26,
+        "columnNumber": 16
+      },
+      "timestamp": "2025-06-21T12:03:37.908Z"
+    },
+    {
+      "type": "log",
+      "text": "StickyCanvas: task positions before init: 0",
+      "location": {
+        "url": "http://localhost:3000/src/components/StickyCanvas.vue",
+        "lineNumber": 27,
+        "columnNumber": 16
+      },
+      "timestamp": "2025-06-21T12:03:37.908Z"
+    },
+    {
+      "type": "log",
+      "text": "StickyCanvas: task positions after init: 27",
+      "location": {
+        "url": "http://localhost:3000/src/components/StickyCanvas.vue",
+        "lineNumber": 30,
+        "columnNumber": 18
+      },
+      "timestamp": "2025-06-21T12:03:37.914Z"
+    },
+    {
+      "type": "log",
+      "text": "Home: Tasks fetched, count: 27",
+      "location": {
+        "url": "http://localhost:3000/src/pages/Home.vue",
+        "lineNumber": 765,
+        "columnNumber": 14
+      },
+      "timestamp": "2025-06-21T12:03:37.918Z"
+    },
+    {
+      "type": "log",
+      "text": "Home: Tasks data: Proxy(Array)",
+      "location": {
+        "url": "http://localhost:3000/src/pages/Home.vue",
+        "lineNumber": 766,
+        "columnNumber": 14
+      },
+      "timestamp": "2025-06-21T12:03:37.918Z"
+    },
+    {
+      "type": "log",
+      "text": "Home: Modules fetched, count: 2",
+      "location": {
+        "url": "http://localhost:3000/src/pages/Home.vue",
+        "lineNumber": 768,
+        "columnNumber": 14
+      },
+      "timestamp": "2025-06-21T12:03:37.924Z"
+    },
+    {
+      "type": "log",
+      "text": "Home: All data loaded, final tasks count: 27",
+      "location": {
+        "url": "http://localhost:3000/src/pages/Home.vue",
+        "lineNumber": 776,
+        "columnNumber": 14
+      },
+      "timestamp": "2025-06-21T12:03:37.933Z"
+    },
+    {
+      "type": "log",
+      "text": "TaskConnections Performance Metrics: {avgCalculationTime: 0.005624999990686774, cacheHitRate: 75.00%, totalCalculations: 160, cacheSize: 20, coordinateCacheSize: 0}",
+      "location": {
+        "url": "http://localhost:3000/src/components/TaskConnections.vue",
+        "lineNumber": 252,
+        "columnNumber": 14
+      },
+      "timestamp": "2025-06-21T12:03:47.817Z"
+    }
+  ]
+}

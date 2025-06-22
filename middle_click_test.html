@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>中键拖动测试</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+        .test-container {
+            width: 600px;
+            height: 400px;
+            border: 2px solid #666;
+            position: relative;
+            cursor: grab;
+            background: #f5f5f5;
+            overflow: hidden;
+        }
+        .test-container:active {
+            cursor: grabbing;
+        }
+        .content {
+            width: 200px;
+            height: 200px;
+            background: #4CAF50;
+            position: absolute;
+            top: 100px;
+            left: 200px;
+            transform-origin: 0 0;
+            transition: transform 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .info {
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #e3f2fd;
+            border-radius: 5px;
+        }
+        .log {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <h3>中键拖动功能测试</h3>
+        <p>请使用鼠标中键（滚轮按下）在下方区域拖动绿色方块</p>
+        <p>如果功能正常，应该可以看到详细的拖动日志</p>
+    </div>
+    
+    <div class="test-container" id="container">
+        <div class="content" id="content">拖动测试区域</div>
+    </div>
+    
+    <div class="log" id="log"></div>
+
+    <script>
+        const container = document.getElementById('container');
+        const content = document.getElementById('content');
+        const log = document.getElementById('log');
+        
+        let isPanning = false;
+        let startX = 0;
+        let startY = 0;
+        let startTransformX = 0;
+        let startTransformY = 0;
+        let currentTransformX = 0;
+        let currentTransformY = 0;
+        
+        function addLog(message) {
+            const time = new Date().toLocaleTimeString();
+            log.innerHTML += `[${time}] ${message}\n`;
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        // 监听鼠标按下事件
+        container.addEventListener('mousedown', function(event) {
+            addLog(`🎯 鼠标按下: 按键=${event.button}, 位置=(${event.clientX}, ${event.clientY})`);
+            
+            // 只处理中键
+            if (event.button === 1) {
+                event.preventDefault();
+                event.stopPropagation();
+                
+                isPanning = true;
+                startX = event.clientX;
+                startY = event.clientY;
+                startTransformX = currentTransformX;
+                startTransformY = currentTransformY;
+                
+                addLog('🚀 开始中键拖动');
+                
+                document.addEventListener('mousemove', handleMouseMove, { passive: false, capture: true });
+                document.addEventListener('mouseup', handleMouseUp, { passive: false, capture: true, once: true });
+                document.addEventListener('mouseleave', handleMouseUp, { passive: false, capture: true, once: true });
+            }
+        });
+        
+        function handleMouseMove(event) {
+            if (!isPanning) return;
+            
+            event.preventDefault();
+            
+            const deltaX = event.clientX - startX;
+            const deltaY = event.clientY - startY;
+            
+            currentTransformX = startTransformX + deltaX;
+            currentTransformY = startTransformY + deltaY;
+            
+            content.style.transform = `translate3d(${currentTransformX}px, ${currentTransformY}px, 0)`;
+            
+            if (Math.random() < 0.1) { // 10%概率输出，避免过多日志
+                addLog(`📊 拖动中: 位移=(${deltaX}, ${deltaY}), 最终位置=(${currentTransformX}, ${currentTransformY})`);
+            }
+        }
+        
+        function handleMouseUp() {
+            if (!isPanning) return;
+            
+            isPanning = false;
+            addLog(`🛑 拖动结束: 最终位置=(${currentTransformX}, ${currentTransformY})`);
+            
+            document.removeEventListener('mousemove', handleMouseMove, { capture: true });
+        }
+        
+        // 防止浏览器默认的中键行为
+        container.addEventListener('contextmenu', function(event) {
+            event.preventDefault();
+        });
+        
+        container.addEventListener('auxclick', function(event) {
+            if (event.button === 1) {
+                event.preventDefault();
+            }
+        });
+        
+        addLog('✅ 测试页面初始化完成，可以开始测试中键拖动');
+    </script>
+</body>
+</html>

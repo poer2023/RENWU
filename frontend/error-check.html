@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error Check - TaskWall Frontend</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0052a3; }
+        #iframe-container {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: none;
+        }
+        .results {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 TaskWall 前端错误检查工具</h1>
+        
+        <div class="status info">
+            <strong>检查目标:</strong> http://localhost:3000
+        </div>
+        
+        <div class="controls">
+            <button onclick="loadApp()">🚀 加载应用</button>
+            <button onclick="checkErrors()">🔍 检查错误</button>
+            <button onclick="checkNetwork()">🌐 检查网络</button>
+            <button onclick="clearResults()">🧹 清除结果</button>
+            <button onclick="exportResults()">📊 导出结果</button>
+        </div>
+        
+        <div id="iframe-container" style="display: none;">
+            <iframe id="app-frame" src="about:blank"></iframe>
+        </div>
+        
+        <div class="results" id="results">
+            <div class="status info">
+                <strong>状态:</strong> 等待检查...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let checkInterval;
+        let errorLog = [];
+        
+        function loadApp() {
+            const iframe = document.getElementById('app-frame');
+            const container = document.getElementById('iframe-container');
+            
+            updateStatus('加载应用中...', 'info');
+            
+            iframe.onload = function() {
+                try {
+                    // 注入错误检查脚本到iframe中
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    const script = iframeDoc.createElement('script');
+                    script.textContent = `
+                        // 错误监控脚本
+                        window.errorMonitor = {
+                            errors: [],
+                            warnings: [],
+                            networkErrors: []
+                        };
+                        
+                        // 监听错误
+                        window.addEventListener('error', (e) => {
+                            window.errorMonitor.errors.push({
+                                type: 'error',
+                                message: e.message,
+                                filename: e.filename,
+                                lineno: e.lineno,
+                                colno: e.colno,
+                                timestamp: new Date().toISOString()
+                            });
+                        });
+                        
+                        // 监听Promise rejections
+                        window.addEventListener('unhandledrejection', (e) => {
+                            window.errorMonitor.errors.push({
+                                type: 'promise_rejection',
+                                message: e.reason?.toString() || 'Unknown promise rejection',
+                                timestamp: new Date().toISOString()
+                            });
+                        });
+                        
+                        // 重写console方法
+                        const originalError = console.error;
+                        const originalWarn = console.warn;
+                        
+                        console.error = function(...args) {
+                            window.errorMonitor.errors.push({
+                                type: 'console_error',
+                                message: args.join(' '),
+                                timestamp: new Date().toISOString()
+                            });
+                            originalError.apply(console, args);
+                        };
+                        
+                        console.warn = function(...args) {
+                            window.errorMonitor.warnings.push({
+                                type: 'console_warning',
+                                message: args.join(' '),
+                                timestamp: new Date().toISOString()
+                            });
+                            originalWarn.apply(console, args);
+                        };
+                        
+                        console.log('Error monitoring injected successfully');
+                    `;
+                    iframeDoc.head.appendChild(script);
+                    
+                    updateStatus('应用加载成功，错误监控已启动', 'success');
+                    container.style.display = 'block';
+                    
+                    // 开始定期检查
+                    startMonitoring();
+                    
+                } catch (error) {
+                    updateStatus('无法注入监控脚本: ' + error.message, 'error');
+                }
+            };
+            
+            iframe.onerror = function() {
+                updateStatus('应用加载失败', 'error');
+            };
+            
+            iframe.src = 'http://localhost:3000';
+        }
+        
+        function startMonitoring() {
+            if (checkInterval) clearInterval(checkInterval);
+            
+            checkInterval = setInterval(() => {
+                checkErrors();
+            }, 3000); // 每3秒检查一次
+        }
+        
+        function checkErrors() {
+            const iframe = document.getElementById('app-frame');
+            
+            try {
+                const iframeWindow = iframe.contentWindow;
+                if (!iframeWindow || !iframeWindow.errorMonitor) {
+                    updateStatus('无法访问应用监控数据', 'warning');
+                    return;
+                }
+                
+                const monitor = iframeWindow.errorMonitor;
+                const totalErrors = monitor.errors.length;
+                const totalWarnings = monitor.warnings.length;
+                const totalNetworkErrors = monitor.networkErrors.length;
+                
+                let statusHtml = `
+                    <div class="status ${totalErrors > 0 ? 'error' : 'success'}">
+                        <strong>检查结果:</strong> 
+                        JavaScript错误: ${totalErrors}, 
+                        警告: ${totalWarnings}, 
+                        网络错误: ${totalNetworkErrors}
+                    </div>
+                `;
+                
+                if (totalErrors > 0) {
+                    statusHtml += '<div class="status error"><strong>🔴 发现JavaScript错误:</strong><pre>';
+                    monitor.errors.forEach((error, index) => {
+                        statusHtml += `${index + 1}. [${error.timestamp}] ${error.type}: ${error.message}\\n`;
+                        if (error.filename) {
+                            statusHtml += `   位置: ${error.filename}:${error.lineno}:${error.colno}\\n`;
+                        }
+                    });
+                    statusHtml += '</pre></div>';
+                }
+                
+                if (totalWarnings > 0) {
+                    statusHtml += '<div class="status warning"><strong>🟡 发现警告:</strong><pre>';
+                    monitor.warnings.forEach((warning, index) => {
+                        statusHtml += `${index + 1}. [${warning.timestamp}] ${warning.message}\\n`;
+                    });
+                    statusHtml += '</pre></div>';
+                }
+                
+                if (totalErrors === 0 && totalWarnings === 0) {
+                    statusHtml += '<div class="status success"><strong>✅ 没有发现错误或警告</strong></div>';
+                }
+                
+                document.getElementById('results').innerHTML = statusHtml;
+                
+            } catch (error) {
+                updateStatus('检查过程中出错: ' + error.message, 'error');
+            }
+        }
+        
+        function checkNetwork() {
+            updateStatus('检查网络连接...', 'info');
+            
+            // 检查主要API端点
+            const endpoints = [
+                'http://localhost:8000/api/tasks',
+                'http://localhost:8000/docs',
+                'http://localhost:8000/health'
+            ];
+            
+            let results = [];
+            let completed = 0;
+            
+            endpoints.forEach(endpoint => {
+                fetch(endpoint)
+                    .then(response => {
+                        results.push({
+                            url: endpoint,
+                            status: response.status,
+                            ok: response.ok
+                        });
+                    })
+                    .catch(error => {
+                        results.push({
+                            url: endpoint,
+                            error: error.message,
+                            ok: false
+                        });
+                    })
+                    .finally(() => {
+                        completed++;
+                        if (completed === endpoints.length) {
+                            displayNetworkResults(results);
+                        }
+                    });
+            });
+        }
+        
+        function displayNetworkResults(results) {
+            let html = '<div class="status info"><strong>🌐 网络检查结果:</strong></div>';
+            
+            results.forEach(result => {
+                const statusClass = result.ok ? 'success' : 'error';
+                html += `<div class="status ${statusClass}">
+                    <strong>${result.url}:</strong> 
+                    ${result.ok ? '✅ OK (' + result.status + ')' : '❌ 失败 (' + (result.error || result.status) + ')'}
+                </div>`;
+            });
+            
+            document.getElementById('results').innerHTML += html;
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = `
+                <div class="status info">
+                    <strong>状态:</strong> 结果已清除
+                </div>
+            `;
+            
+            const iframe = document.getElementById('app-frame');
+            try {
+                const iframeWindow = iframe.contentWindow;
+                if (iframeWindow && iframeWindow.errorMonitor) {
+                    iframeWindow.errorMonitor.errors = [];
+                    iframeWindow.errorMonitor.warnings = [];
+                    iframeWindow.errorMonitor.networkErrors = [];
+                }
+            } catch (error) {
+                console.log('无法清除iframe监控数据:', error.message);
+            }
+        }
+        
+        function exportResults() {
+            const iframe = document.getElementById('app-frame');
+            
+            try {
+                const iframeWindow = iframe.contentWindow;
+                if (!iframeWindow || !iframeWindow.errorMonitor) {
+                    updateStatus('无监控数据可导出', 'warning');
+                    return;
+                }
+                
+                const data = {
+                    timestamp: new Date().toISOString(),
+                    url: 'http://localhost:3000',
+                    results: iframeWindow.errorMonitor
+                };
+                
+                const dataStr = JSON.stringify(data, null, 2);
+                const dataBlob = new Blob([dataStr], {type: 'application/json'});
+                const url = URL.createObjectURL(dataBlob);
+                
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `taskwall-error-check-${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`;
+                link.click();
+                
+                updateStatus('结果已导出', 'success');
+                
+            } catch (error) {
+                updateStatus('导出失败: ' + error.message, 'error');
+            }
+        }
+        
+        function updateStatus(message, type) {
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            
+            const results = document.getElementById('results');
+            results.insertBefore(statusDiv, results.firstChild);
+        }
+        
+        // 页面加载时的初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            updateStatus('错误检查工具已准备就绪', 'info');
+        });
+    </script>
+</body>
+</html>

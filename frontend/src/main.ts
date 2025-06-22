@@ -4,6 +4,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+import './styles/index.css'
 
 import App from './App.vue'
 import Home from './pages/Home.vue'
@@ -34,6 +35,18 @@ app.use(ElementPlus)
 
 // Setup global error handlers
 setupGlobalErrorHandlers()
+
+// Add Vue error handler
+app.config.errorHandler = (err, vm, info) => {
+  console.error('Vue Error:', err, info)
+  // Prevent error from bubbling up
+  return false
+}
+
+// Handle unhandled promise rejections specifically for Vue
+app.config.warnHandler = (msg, vm, trace) => {
+  console.warn('Vue Warning:', msg, trace)
+}
 
 // Initialize accessibility features
 accessibilityManager.init()

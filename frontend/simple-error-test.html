@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Console Error Test for TaskWall</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .error { background: #ffe6e6; border-color: #ff9999; }
+        .success { background: #e6ffe6; border-color: #99ff99; }
+        .info { background: #e6f3ff; border-color: #99ccff; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+        iframe { width: 100%; height: 600px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>🔍 TaskWall 控制台错误检查</h1>
+    
+    <div class="section info">
+        <h3>测试状态</h3>
+        <div id="status">准备就绪...</div>
+    </div>
+    
+    <div class="section">
+        <h3>操作</h3>
+        <button onclick="runTest()">🚀 开始测试</button>
+        <button onclick="checkNetwork()">🌐 检查网络</button>
+        <button onclick="exportReport()">📊 导出报告</button>
+    </div>
+    
+    <div class="section">
+        <h3>前端应用 (http://localhost:3000)</h3>
+        <iframe id="app-frame" src="about:blank"></iframe>
+    </div>
+    
+    <div class="section">
+        <h3>检查结果</h3>
+        <div id="results">等待检查...</div>
+    </div>
+
+    <script>
+        let testResults = {
+            errors: [],
+            warnings: [],
+            networkErrors: [],
+            startTime: null,
+            endTime: null
+        };
+
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            const timestamp = new Date().toLocaleTimeString();
+            statusDiv.innerHTML = `[${timestamp}] ${message}`;
+            statusDiv.className = type;
+        }
+
+        function runTest() {
+            testResults = {
+                errors: [],
+                warnings: [],
+                networkErrors: [],
+                startTime: new Date(),
+                endTime: null
+            };
+
+            updateStatus('开始加载应用并监控错误...', 'info');
+            
+            const iframe = document.getElementById('app-frame');
+            
+            iframe.onload = function() {
+                try {
+                    updateStatus('应用加载成功，注入监控脚本...', 'success');
+                    
+                    // 等待一段时间让应用完全加载
+                    setTimeout(() => {
+                        checkConsoleErrors(iframe);
+                    }, 2000);
+                    
+                } catch (error) {
+                    updateStatus('无法访问iframe内容: ' + error.message, 'error');
+                    testResults.errors.push({
+                        type: 'iframe_access_error',
+                        message: error.message,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            };
+            
+            iframe.onerror = function() {
+                updateStatus('应用加载失败', 'error');
+                testResults.errors.push({
+                    type: 'app_load_error',
+                    message: 'Failed to load application',
+                    timestamp: new Date().toISOString()
+                });
+            };
+            
+            // 加载应用
+            iframe.src = 'http://localhost:3000';
+        }
+
+        function checkConsoleErrors(iframe) {
+            updateStatus('检查控制台错误中...', 'info');
+            
+            // 因为同源策略，我们无法直接访问iframe的console
+            // 所以我们通过网络请求和其他方式检查
+            
+            // 检查主要的JavaScript文件是否加载成功
+            const jsFiles = [
+                'http://localhost:3000/src/main.ts',
+                'http://localhost:3000/@vite/client'
+            ];
+            
+            let checks = 0;
+            const totalChecks = jsFiles.length;
+            
+            jsFiles.forEach(url => {
+                fetch(url)
+                    .then(response => {
+                        if (!response.ok) {
+                            testResults.errors.push({
+                                type: 'js_load_error',
+                                message: `Failed to load ${url}: ${response.status} ${response.statusText}`,
+                                timestamp: new Date().toISOString(),
+                                url: url,
+                                status: response.status
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        testResults.errors.push({
+                            type: 'js_fetch_error',
+                            message: `Network error loading ${url}: ${error.message}`,
+                            timestamp: new Date().toISOString(),
+                            url: url
+                        });
+                    })
+                    .finally(() => {
+                        checks++;
+                        if (checks === totalChecks) {
+                            setTimeout(generateReport, 1000);
+                        }
+                    });
+            });
+        }
+
+        function checkNetwork() {
+            updateStatus('检查网络连接...', 'info');
+            
+            const endpoints = [
+                'http://localhost:3000',
+                'http://localhost:8000/health',
+                'http://localhost:8000/api/tasks'
+            ];
+            
+            let completed = 0;
+            const networkResults = [];
+            
+            endpoints.forEach(endpoint => {
+                const startTime = performance.now();
+                
+                fetch(endpoint)
+                    .then(response => {
+                        const endTime = performance.now();
+                        networkResults.push({
+                            url: endpoint,
+                            status: response.status,
+                            ok: response.ok,
+                            responseTime: Math.round(endTime - startTime) + 'ms'
+                        });
+                        
+                        if (!response.ok) {
+                            testResults.networkErrors.push({
+                                url: endpoint,
+                                status: response.status,
+                                statusText: response.statusText,
+                                timestamp: new Date().toISOString()
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        networkResults.push({
+                            url: endpoint,
+                            error: error.message,
+                            ok: false
+                        });
+                        
+                        testResults.networkErrors.push({
+                            url: endpoint,
+                            error: error.message,
+                            timestamp: new Date().toISOString()
+                        });
+                    })
+                    .finally(() => {
+                        completed++;
+                        if (completed === endpoints.length) {
+                            displayNetworkResults(networkResults);
+                        }
+                    });
+            });
+        }
+
+        function displayNetworkResults(results) {
+            let html = '<h4>🌐 网络检查结果:</h4><pre>';
+            
+            results.forEach(result => {
+                if (result.ok) {
+                    html += `✅ ${result.url} - OK (${result.status}) ${result.responseTime}\\n`;
+                } else {
+                    html += `❌ ${result.url} - ${result.error || result.status}\\n`;
+                }
+            });
+            
+            html += '</pre>';
+            
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML += html;
+        }
+
+        function generateReport() {
+            testResults.endTime = new Date();
+            const duration = testResults.endTime - testResults.startTime;
+            
+            let html = `
+                <h4>📊 检查报告</h4>
+                <div class="section ${testResults.errors.length > 0 ? 'error' : 'success'}">
+                    <strong>测试时间:</strong> ${duration}ms<br>
+                    <strong>JavaScript错误:</strong> ${testResults.errors.length}<br>
+                    <strong>警告:</strong> ${testResults.warnings.length}<br>
+                    <strong>网络错误:</strong> ${testResults.networkErrors.length}
+                </div>
+            `;
+            
+            if (testResults.errors.length > 0) {
+                html += '<div class="section error"><h4>🔴 发现的错误:</h4><pre>';
+                testResults.errors.forEach((error, index) => {
+                    html += `${index + 1}. [${error.timestamp}] ${error.type}:\\n`;
+                    html += `   ${error.message}\\n`;
+                    if (error.url) html += `   URL: ${error.url}\\n`;
+                    if (error.status) html += `   Status: ${error.status}\\n`;
+                    html += '\\n';
+                });
+                html += '</pre></div>';
+            }
+            
+            if (testResults.networkErrors.length > 0) {
+                html += '<div class="section error"><h4>🌐 网络错误:</h4><pre>';
+                testResults.networkErrors.forEach((error, index) => {
+                    html += `${index + 1}. [${error.timestamp}] ${error.url}\\n`;
+                    html += `   ${error.error || error.status + ' ' + error.statusText}\\n\\n`;
+                });
+                html += '</pre></div>';
+            }
+            
+            if (testResults.errors.length === 0 && testResults.networkErrors.length === 0) {
+                html += '<div class="section success"><h4>✅ 没有发现严重错误</h4>应用似乎运行正常。</div>';
+            }
+            
+            document.getElementById('results').innerHTML = html;
+            updateStatus(`检查完成 - 发现 ${testResults.errors.length} 个错误`, 
+                        testResults.errors.length > 0 ? 'error' : 'success');
+        }
+
+        function exportReport() {
+            const report = {
+                timestamp: new Date().toISOString(),
+                testDuration: testResults.endTime ? (testResults.endTime - testResults.startTime) : null,
+                summary: {
+                    totalErrors: testResults.errors.length,
+                    totalWarnings: testResults.warnings.length,
+                    totalNetworkErrors: testResults.networkErrors.length
+                },
+                details: testResults,
+                recommendations: generateRecommendations()
+            };
+            
+            const blob = new Blob([JSON.stringify(report, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `taskwall-error-report-${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`;
+            a.click();
+            
+            updateStatus('报告已导出', 'success');
+        }
+
+        function generateRecommendations() {
+            const recommendations = [];
+            
+            if (testResults.networkErrors.some(e => e.url.includes(':8000'))) {
+                recommendations.push('后端服务可能未启动或无法访问，请检查 http://localhost:8000');
+            }
+            
+            if (testResults.errors.some(e => e.type === 'js_load_error')) {
+                recommendations.push('JavaScript文件加载失败，可能是Vite开发服务器问题');
+            }
+            
+            if (testResults.errors.length === 0 && testResults.networkErrors.length === 0) {
+                recommendations.push('应用运行正常，没有发现严重问题');
+            }
+            
+            return recommendations;
+        }
+
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            updateStatus('错误检查工具已准备就绪，点击"开始测试"开始检查', 'success');
+        });
+    </script>
+</body>
+</html>

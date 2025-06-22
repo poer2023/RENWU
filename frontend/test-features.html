@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskWall 功能测试指南</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #f5f7fa;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 20px;
+    }
+    
+    .header h1 {
+      color: #2d3748;
+      margin-bottom: 10px;
+    }
+    
+    .header p {
+      color: #4a5568;
+      font-size: 18px;
+    }
+    
+    .feature-section {
+      margin-bottom: 40px;
+    }
+    
+    .feature-title {
+      color: #2b6cb0;
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 15px;
+      border-left: 4px solid #3182ce;
+      padding-left: 15px;
+    }
+    
+    .test-steps {
+      background: #f7fafc;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 15px 0;
+    }
+    
+    .test-steps h4 {
+      color: #2d3748;
+      margin-top: 0;
+      margin-bottom: 15px;
+    }
+    
+    .step-list {
+      list-style: none;
+      padding: 0;
+    }
+    
+    .step-list li {
+      padding: 8px 0;
+      border-bottom: 1px solid #e2e8f0;
+      position: relative;
+      padding-left: 30px;
+    }
+    
+    .step-list li:before {
+      content: counter(step-counter);
+      counter-increment: step-counter;
+      position: absolute;
+      left: 0;
+      top: 8px;
+      background: #3182ce;
+      color: white;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    
+    .step-list {
+      counter-reset: step-counter;
+    }
+    
+    .keyboard-shortcut {
+      background: #2d3748;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+    
+    .expected-result {
+      background: #f0fff4;
+      border: 1px solid #9ae6b4;
+      border-radius: 6px;
+      padding: 15px;
+      margin: 10px 0;
+    }
+    
+    .expected-result h5 {
+      color: #22543d;
+      margin: 0 0 8px 0;
+    }
+    
+    .expected-result p {
+      color: #276749;
+      margin: 0;
+    }
+    
+    .warning {
+      background: #fef5e7;
+      border: 1px solid #f6ad55;
+      border-radius: 6px;
+      padding: 15px;
+      margin: 10px 0;
+    }
+    
+    .warning h5 {
+      color: #c05621;
+      margin: 0 0 8px 0;
+    }
+    
+    .warning p {
+      color: #c05621;
+      margin: 0;
+    }
+    
+    .link-button {
+      display: inline-block;
+      background: #3182ce;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 500;
+      margin: 20px 20px 20px 0;
+      transition: background 0.2s;
+    }
+    
+    .link-button:hover {
+      background: #2c5282;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🧪 TaskWall 功能测试指南</h1>
+      <p>验证删除功能、AI生成子任务和快捷键功能</p>
+      <a href="http://localhost:3000" class="link-button" target="_blank">打开 TaskWall 应用</a>
+      <a href="http://localhost:8765/docs" class="link-button" target="_blank">查看 API 文档</a>
+    </div>
+
+    <div class="feature-section">
+      <h2 class="feature-title">🗑️ 任务删除功能测试</h2>
+      
+      <div class="test-steps">
+        <h4>测试步骤:</h4>
+        <ol class="step-list">
+          <li>在 TaskWall 中创建一个测试任务</li>
+          <li>点击任务卡片选中它</li>
+          <li>点击任务卡片右下角的删除按钮 (🗑️)</li>
+          <li>在确认对话框中点击"删除"按钮</li>
+        </ol>
+        
+        <div class="expected-result">
+          <h5>预期结果:</h5>
+          <p>任务应该被成功删除，从画布中消失，同时相关的连线也会被清理。</p>
+        </div>
+      </div>
+
+      <div class="test-steps">
+        <h4>快捷键删除测试:</h4>
+        <ol class="step-list">
+          <li>选中一个任务卡片</li>
+          <li>按下 <span class="keyboard-shortcut">Delete</span> 键或 <span class="keyboard-shortcut">Backspace</span> 键</li>
+          <li>或者按下 <span class="keyboard-shortcut">Ctrl+D</span> (Windows) / <span class="keyboard-shortcut">Cmd+D</span> (Mac)</li>
+          <li>确认删除</li>
+        </ol>
+        
+        <div class="expected-result">
+          <h5>预期结果:</h5>
+          <p>任务应该通过快捷键被删除，功能与点击删除按钮相同。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="feature-section">
+      <h2 class="feature-title">🤖 AI生成子任务功能测试</h2>
+      
+      <div class="warning">
+        <h5>⚠️ 前提条件:</h5>
+        <p>确保后端已配置有效的 Gemini API Key。可以在设置中配置，或通过环境变量 GEMINI_API_KEY 设置。</p>
+      </div>
+      
+      <div class="test-steps">
+        <h4>测试步骤:</h4>
+        <ol class="step-list">
+          <li>创建一个有明确标题和描述的主任务，如："开发用户登录功能"</li>
+          <li>点击任务卡片选中它</li>
+          <li>点击任务卡片底部的 "⚡" 生成子任务按钮</li>
+          <li>等待 AI 处理（可能需要几秒钟）</li>
+        </ol>
+        
+        <div class="expected-result">
+          <h5>预期结果:</h5>
+          <p>
+            1. AI 应该生成 3-5 个相关的子任务<br>
+            2. 子任务会自动创建在父任务右侧，垂直排列<br>
+            3. 每个子任务都会自动连线到父任务<br>
+            4. 子任务具有合理的标题、描述和优先级<br>
+            5. 控制台会显示详细的创建日志
+          </p>
+        </div>
+      </div>
+
+      <div class="test-steps">
+        <h4>快捷键生成子任务:</h4>
+        <ol class="step-list">
+          <li>选中一个任务卡片</li>
+          <li>按下 <span class="keyboard-shortcut">Ctrl+G</span> (Windows) / <span class="keyboard-shortcut">Cmd+G</span> (Mac)</li>
+          <li>等待 AI 处理</li>
+        </ol>
+        
+        <div class="expected-result">
+          <h5>预期结果:</h5>
+          <p>功能与点击生成子任务按钮相同。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="feature-section">
+      <h2 class="feature-title">⌨️ 其他快捷键功能测试</h2>
+      
+      <div class="test-steps">
+        <h4>编辑任务快捷键:</h4>
+        <ol class="step-list">
+          <li>选中一个任务卡片</li>
+          <li>按下 <span class="keyboard-shortcut">Enter</span> 键或 <span class="keyboard-shortcut">F2</span> 键</li>
+        </ol>
+        
+        <div class="expected-result">
+          <h5>预期结果:</h5>
+          <p>任务进入编辑模式，可以修改标题和描述。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="feature-section">
+      <h2 class="feature-title">🔍 调试和故障排除</h2>
+      
+      <div class="test-steps">
+        <h4>检查控制台日志:</h4>
+        <ol class="step-list">
+          <li>打开浏览器开发者工具 (F12)</li>
+          <li>切换到 Console 标签</li>
+          <li>执行各种操作时观察日志输出</li>
+          <li>查看是否有错误信息</li>
+        </ol>
+        
+        <div class="expected-result">
+          <h5>应该看到的日志:</h5>
+          <p>
+            • 删除任务: "Task deleted successfully" 等<br>
+            • 生成子任务: "开始生成子任务...", "收到AI生成的子任务:", "子任务创建成功:" 等<br>
+            • 创建连线: "创建依赖连线成功:" 等
+          </p>
+        </div>
+      </div>
+
+      <div class="test-steps">
+        <h4>API 状态检查:</h4>
+        <ol class="step-list">
+          <li>访问 <a href="http://localhost:8765/docs" target="_blank">http://localhost:8765/docs</a></li>
+          <li>测试 DELETE /tasks/{task_id} 端点</li>
+          <li>测试 POST /ai/subtasks 端点</li>
+          <li>测试 POST /dependencies/ 端点</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="feature-section">
+      <h2 class="feature-title">🎯 完整测试流程</h2>
+      
+      <div class="test-steps">
+        <h4>端到端测试:</h4>
+        <ol class="step-list">
+          <li>创建一个主任务："开发电商网站"</li>
+          <li>为该任务生成子任务（Ctrl+G）</li>
+          <li>验证子任务自动连线</li>
+          <li>选择一个子任务并删除（Delete键）</li>
+          <li>验证连线也被清理</li>
+          <li>再次生成新的子任务</li>
+          <li>检查所有功能是否正常工作</li>
+        </ol>
+        
+        <div class="expected-result">
+          <h5>预期结果:</h5>
+          <p>整个流程应该顺畅运行，没有错误，UI响应及时，连线准确。</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 50px; padding-top: 20px; border-top: 2px solid #e2e8f0;">
+      <p style="color: #4a5568;">
+        🎉 测试完成后，请检查所有功能是否按预期工作！<br>
+        如有问题，请查看控制台日志获取详细信息。
+      </p>
+    </div>
+  </div>
+</body>
+</html>

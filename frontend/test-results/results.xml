@@ -1,0 +1,2451 @@
+<testsuites id="" name="" tests="40" failures="30" skipped="0" errors="0" time="178.057299">
+<testsuite name="06-view-switching.spec.ts" timestamp="2025-06-22T17:32:33.478Z" hostname="chromium" tests="8" failures="6" skipped="0" time="173.997" errors="0">
+<testcase name="TaskWall 视图切换功能测试 › 应用基本加载测试" classname="06-view-switching.spec.ts" time="5.2">
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy(Array)
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+CONSOLE log: Home: All data loaded, final tasks count: 0
+🔍 测试应用基本加载...
+✅ 页面标题正确
+✅ App根元素可见
+✅ Canvas视图正常加载
+✅ 无JavaScript错误
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 视图切换FAB按钮存在性测试" classname="06-view-switching.spec.ts" time="8.248">
+<failure message="06-view-switching.spec.ts:75:3 视图切换FAB按钮存在性测试" type="FAILURE">
+<![CDATA[  [chromium] › 06-view-switching.spec.ts:75:3 › TaskWall 视图切换功能测试 › 视图切换FAB按钮存在性测试 ─────────────────
+
+    Error: Timed out 5000ms waiting for expect(locator).toBeVisible()
+
+    Locator: locator('.fab-view-switcher')
+    Expected: visible
+    Received: <element(s) not found>
+    Call log:
+      - Expect "toBeVisible" with timeout 5000ms
+      - waiting for locator('.fab-view-switcher')
+
+
+      78 |     // 查找视图切换FAB按钮
+      79 |     const viewSwitcherFAB = page.locator('.fab-view-switcher');
+    > 80 |     await expect(viewSwitcherFAB).toBeVisible();
+         |                                   ^
+      81 |     console.log('✅ 视图切换FAB按钮存在且可见');
+      82 |     
+      83 |     // 检查按钮是否可点击
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:80:35
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-chromium/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy(Array)
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+CONSOLE log: Home: All data loaded, final tasks count: 0
+🔍 测试视图切换FAB按钮...
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-chromium/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-chromium/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-chromium/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 三种视图循环切换测试" classname="06-view-switching.spec.ts" time="31.55">
+<failure message="06-view-switching.spec.ts:94:3 三种视图循环切换测试" type="FAILURE">
+<![CDATA[  [chromium] › 06-view-switching.spec.ts:94:3 › TaskWall 视图切换功能测试 › 三种视图循环切换测试 ─────────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.textContent: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher').locator('.fab-icon')
+
+
+       99 |     
+      100 |     // 记录初始状态
+    > 101 |     const initialIcon = await fabIcon.textContent();
+          |                                       ^
+      102 |     console.log(`📊 初始视图图标: ${initialIcon}`);
+      103 |     
+      104 |     // 测试切换序列: canvas -> timeline -> island -> canvas
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:101:39
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-chromium/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy(Array)
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+CONSOLE log: Home: All data loaded, final tasks count: 0
+🔍 测试三种视图循环切换...
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-chromium/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-chromium/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-chromium/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 快捷键视图切换测试" classname="06-view-switching.spec.ts" time="5.53">
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy(Array)
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+🔍 测试快捷键视图切换...
+⌨️ 测试 Ctrl+1 (canvas view)...
+✅ Ctrl+1 快捷键工作正常，canvas视图可见
+⌨️ 测试 Ctrl+2 (timeline view)...
+CONSOLE log: 🔧 [Refactor] 事件清理交由统一拖动系统处理。
+CONSOLE log: 🔧 [UnifiedDrag] 销毁统一拖动系统
+CONSOLE log: 画布系统超级清理完成
+✅ Ctrl+2 快捷键工作正常，timeline视图可见
+⌨️ 测试 Ctrl+3 (island view)...
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+✅ Ctrl+3 快捷键工作正常，island视图可见
+⌨️ 测试 Ctrl+1 (canvas view)...
+✅ Ctrl+1 快捷键工作正常，canvas视图可见
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 视图切换过程中的控制台错误检查" classname="06-view-switching.spec.ts" time="31.577">
+<failure message="06-view-switching.spec.ts:169:3 视图切换过程中的控制台错误检查" type="FAILURE">
+<![CDATA[  [chromium] › 06-view-switching.spec.ts:169:3 › TaskWall 视图切换功能测试 › 视图切换过程中的控制台错误检查 ───────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher')
+
+
+      190 |     // 进行多次视图切换
+      191 |     for (let i = 0; i < 6; i++) { // 两个完整的循环
+    > 192 |       await viewSwitcherFAB.click();
+          |                             ^
+      193 |       await page.waitForTimeout(300);
+      194 |     }
+      195 |     
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:192:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-chromium/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy(Array)
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+🔍 检查视图切换过程中的控制台错误...
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-chromium/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-chromium/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-chromium/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 视图切换功能性能测试" classname="06-view-switching.spec.ts" time="30.708">
+<failure message="06-view-switching.spec.ts:239:3 视图切换功能性能测试" type="FAILURE">
+<![CDATA[  [chromium] › 06-view-switching.spec.ts:239:3 › TaskWall 视图切换功能测试 › 视图切换功能性能测试 ────────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher')
+
+
+      246 |     for (let i = 0; i < 10; i++) {
+      247 |       const startTime = Date.now();
+    > 248 |       await viewSwitcherFAB.click();
+          |                             ^
+      249 |       await page.waitForTimeout(100); // 短暂等待
+      250 |       const endTime = Date.now();
+      251 |       performanceMetrics.push(endTime - startTime);
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:248:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-chromium/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy(Array)
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试视图切换性能...
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-chromium/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-chromium/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-chromium/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 视图状态持久性测试" classname="06-view-switching.spec.ts" time="30.498">
+<failure message="06-view-switching.spec.ts:267:3 视图状态持久性测试" type="FAILURE">
+<![CDATA[  [chromium] › 06-view-switching.spec.ts:267:3 › TaskWall 视图切换功能测试 › 视图状态持久性测试 ─────────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher')
+
+
+      288 |     
+      289 |     // 再次测试视图切换功能是否仍然工作
+    > 290 |     await viewSwitcherFAB.click();
+          |                           ^
+      291 |     await page.waitForTimeout(500);
+      292 |     await expect(page.locator('.timeline-view')).toBeVisible();
+      293 |     console.log('✅ 页面刷新后视图切换功能仍然正常');
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:290:27
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-chromium/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy(Array)
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试视图状态持久性...
+CONSOLE log: 🔧 [Refactor] 事件清理交由统一拖动系统处理。
+CONSOLE log: 🔧 [UnifiedDrag] 销毁统一拖动系统
+CONSOLE log: 画布系统超级清理完成
+✅ Timeline视图已激活
+CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy(Array)
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+✅ 页面刷新后回到默认canvas视图
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-chromium/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-chromium/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-chromium/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 边界情况和异常处理测试" classname="06-view-switching.spec.ts" time="30.686">
+<failure message="06-view-switching.spec.ts:296:3 边界情况和异常处理测试" type="FAILURE">
+<![CDATA[  [chromium] › 06-view-switching.spec.ts:296:3 › TaskWall 视图切换功能测试 › 边界情况和异常处理测试 ───────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher')
+
+
+      302 |     console.log('🔄 测试快速连续点击...');
+      303 |     for (let i = 0; i < 5; i++) {
+    > 304 |       await viewSwitcherFAB.click();
+          |                             ^
+      305 |       await page.waitForTimeout(50); // 很短的等待时间
+      306 |     }
+      307 |     await page.waitForTimeout(1000);
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:304:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-chromium/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy(Array)
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试边界情况和异常处理...
+🔄 测试快速连续点击...
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-chromium/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-chromium/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-chromium/error-context.md]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="06-view-switching.spec.ts" timestamp="2025-06-22T17:32:33.478Z" hostname="firefox" tests="8" failures="6" skipped="0" time="170.245" errors="0">
+<testcase name="TaskWall 视图切换功能测试 › 应用基本加载测试" classname="06-view-switching.spec.ts" time="5.523">
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: Array
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试应用基本加载...
+✅ 页面标题正确
+✅ App根元素可见
+✅ Canvas视图正常加载
+✅ 无JavaScript错误
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 视图切换FAB按钮存在性测试" classname="06-view-switching.spec.ts" time="8.545">
+<failure message="06-view-switching.spec.ts:75:3 视图切换FAB按钮存在性测试" type="FAILURE">
+<![CDATA[  [firefox] › 06-view-switching.spec.ts:75:3 › TaskWall 视图切换功能测试 › 视图切换FAB按钮存在性测试 ──────────────────
+
+    Error: Timed out 5000ms waiting for expect(locator).toBeVisible()
+
+    Locator: locator('.fab-view-switcher')
+    Expected: visible
+    Received: <element(s) not found>
+    Call log:
+      - Expect "toBeVisible" with timeout 5000ms
+      - waiting for locator('.fab-view-switcher')
+
+
+      78 |     // 查找视图切换FAB按钮
+      79 |     const viewSwitcherFAB = page.locator('.fab-view-switcher');
+    > 80 |     await expect(viewSwitcherFAB).toBeVisible();
+         |                                   ^
+      81 |     console.log('✅ 视图切换FAB按钮存在且可见');
+      82 |     
+      83 |     // 检查按钮是否可点击
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:80:35
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-firefox/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: Array
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+CONSOLE log: Home: All data loaded, final tasks count: 0
+🔍 测试视图切换FAB按钮...
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-firefox/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-firefox/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-firefox/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 三种视图循环切换测试" classname="06-view-switching.spec.ts" time="30.166">
+<failure message="06-view-switching.spec.ts:94:3 三种视图循环切换测试" type="FAILURE">
+<![CDATA[  [firefox] › 06-view-switching.spec.ts:94:3 › TaskWall 视图切换功能测试 › 三种视图循环切换测试 ──────────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.textContent: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher').locator('.fab-icon')
+
+
+       99 |     
+      100 |     // 记录初始状态
+    > 101 |     const initialIcon = await fabIcon.textContent();
+          |                                       ^
+      102 |     console.log(`📊 初始视图图标: ${initialIcon}`);
+      103 |     
+      104 |     // 测试切换序列: canvas -> timeline -> island -> canvas
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:101:39
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-firefox/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: Array
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试三种视图循环切换...
+CONSOLE log: TaskConnections Performance Metrics: JSHandle@object
+CONSOLE log: TaskConnections Performance Metrics: JSHandle@object
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-firefox/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-firefox/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-firefox/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 快捷键视图切换测试" classname="06-view-switching.spec.ts" time="5.152">
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: Array
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试快捷键视图切换...
+⌨️ 测试 Ctrl+1 (canvas view)...
+✅ Ctrl+1 快捷键工作正常，canvas视图可见
+⌨️ 测试 Ctrl+2 (timeline view)...
+CONSOLE log: 🔧 [Refactor] 事件清理交由统一拖动系统处理。
+CONSOLE log: 🔧 [UnifiedDrag] 销毁统一拖动系统
+CONSOLE log: 画布系统超级清理完成
+✅ Ctrl+2 快捷键工作正常，timeline视图可见
+⌨️ 测试 Ctrl+3 (island view)...
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+✅ Ctrl+3 快捷键工作正常，island视图可见
+⌨️ 测试 Ctrl+1 (canvas view)...
+✅ Ctrl+1 快捷键工作正常，canvas视图可见
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 视图切换过程中的控制台错误检查" classname="06-view-switching.spec.ts" time="30.129">
+<failure message="06-view-switching.spec.ts:169:3 视图切换过程中的控制台错误检查" type="FAILURE">
+<![CDATA[  [firefox] › 06-view-switching.spec.ts:169:3 › TaskWall 视图切换功能测试 › 视图切换过程中的控制台错误检查 ────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher')
+
+
+      190 |     // 进行多次视图切换
+      191 |     for (let i = 0; i < 6; i++) { // 两个完整的循环
+    > 192 |       await viewSwitcherFAB.click();
+          |                             ^
+      193 |       await page.waitForTimeout(300);
+      194 |     }
+      195 |     
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:192:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-firefox/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: Array
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 检查视图切换过程中的控制台错误...
+CONSOLE log: TaskConnections Performance Metrics: JSHandle@object
+CONSOLE log: TaskConnections Performance Metrics: JSHandle@object
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-firefox/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-firefox/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-firefox/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 视图切换功能性能测试" classname="06-view-switching.spec.ts" time="30.309">
+<failure message="06-view-switching.spec.ts:239:3 视图切换功能性能测试" type="FAILURE">
+<![CDATA[  [firefox] › 06-view-switching.spec.ts:239:3 › TaskWall 视图切换功能测试 › 视图切换功能性能测试 ─────────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher')
+
+
+      246 |     for (let i = 0; i < 10; i++) {
+      247 |       const startTime = Date.now();
+    > 248 |       await viewSwitcherFAB.click();
+          |                             ^
+      249 |       await page.waitForTimeout(100); // 短暂等待
+      250 |       const endTime = Date.now();
+      251 |       performanceMetrics.push(endTime - startTime);
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:248:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-firefox/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: Array
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试视图切换性能...
+CONSOLE log: TaskConnections Performance Metrics: JSHandle@object
+CONSOLE log: TaskConnections Performance Metrics: JSHandle@object
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-firefox/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-firefox/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-firefox/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 视图状态持久性测试" classname="06-view-switching.spec.ts" time="30.276">
+<failure message="06-view-switching.spec.ts:267:3 视图状态持久性测试" type="FAILURE">
+<![CDATA[  [firefox] › 06-view-switching.spec.ts:267:3 › TaskWall 视图切换功能测试 › 视图状态持久性测试 ──────────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher')
+
+
+      288 |     
+      289 |     // 再次测试视图切换功能是否仍然工作
+    > 290 |     await viewSwitcherFAB.click();
+          |                           ^
+      291 |     await page.waitForTimeout(500);
+      292 |     await expect(page.locator('.timeline-view')).toBeVisible();
+      293 |     console.log('✅ 页面刷新后视图切换功能仍然正常');
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:290:27
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-firefox/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: Array
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试视图状态持久性...
+CONSOLE log: 🔧 [Refactor] 事件清理交由统一拖动系统处理。
+CONSOLE log: 🔧 [UnifiedDrag] 销毁统一拖动系统
+CONSOLE log: 画布系统超级清理完成
+✅ Timeline视图已激活
+CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: Array
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+✅ 页面刷新后回到默认canvas视图
+CONSOLE log: TaskConnections Performance Metrics: JSHandle@object
+CONSOLE log: TaskConnections Performance Metrics: JSHandle@object
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-firefox/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-firefox/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-firefox/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 边界情况和异常处理测试" classname="06-view-switching.spec.ts" time="30.145">
+<failure message="06-view-switching.spec.ts:296:3 边界情况和异常处理测试" type="FAILURE">
+<![CDATA[  [firefox] › 06-view-switching.spec.ts:296:3 › TaskWall 视图切换功能测试 › 边界情况和异常处理测试 ────────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher')
+
+
+      302 |     console.log('🔄 测试快速连续点击...');
+      303 |     for (let i = 0; i < 5; i++) {
+    > 304 |       await viewSwitcherFAB.click();
+          |                             ^
+      305 |       await page.waitForTimeout(50); // 很短的等待时间
+      306 |     }
+      307 |     await page.waitForTimeout(1000);
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:304:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-firefox/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: Array
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试边界情况和异常处理...
+🔄 测试快速连续点击...
+CONSOLE log: TaskConnections Performance Metrics: JSHandle@object
+CONSOLE log: TaskConnections Performance Metrics: JSHandle@object
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-firefox/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-firefox/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-firefox/error-context.md]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="06-view-switching.spec.ts" timestamp="2025-06-22T17:32:33.478Z" hostname="webkit" tests="8" failures="6" skipped="0" time="168.444" errors="0">
+<testcase name="TaskWall 视图切换功能测试 › 应用基本加载测试" classname="06-view-switching.spec.ts" time="4.914">
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试应用基本加载...
+✅ 页面标题正确
+✅ App根元素可见
+✅ Canvas视图正常加载
+✅ 无JavaScript错误
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 视图切换FAB按钮存在性测试" classname="06-view-switching.spec.ts" time="7.783">
+<failure message="06-view-switching.spec.ts:75:3 视图切换FAB按钮存在性测试" type="FAILURE">
+<![CDATA[  [webkit] › 06-view-switching.spec.ts:75:3 › TaskWall 视图切换功能测试 › 视图切换FAB按钮存在性测试 ───────────────────
+
+    Error: Timed out 5000ms waiting for expect(locator).toBeVisible()
+
+    Locator: locator('.fab-view-switcher')
+    Expected: visible
+    Received: <element(s) not found>
+    Call log:
+      - Expect "toBeVisible" with timeout 5000ms
+      - waiting for locator('.fab-view-switcher')
+
+
+      78 |     // 查找视图切换FAB按钮
+      79 |     const viewSwitcherFAB = page.locator('.fab-view-switcher');
+    > 80 |     await expect(viewSwitcherFAB).toBeVisible();
+         |                                   ^
+      81 |     console.log('✅ 视图切换FAB按钮存在且可见');
+      82 |     
+      83 |     // 检查按钮是否可点击
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:80:35
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-webkit/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试视图切换FAB按钮...
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-webkit/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-webkit/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-webkit/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 三种视图循环切换测试" classname="06-view-switching.spec.ts" time="30.2">
+<failure message="06-view-switching.spec.ts:94:3 三种视图循环切换测试" type="FAILURE">
+<![CDATA[  [webkit] › 06-view-switching.spec.ts:94:3 › TaskWall 视图切换功能测试 › 三种视图循环切换测试 ───────────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.textContent: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher').locator('.fab-icon')
+
+
+       99 |     
+      100 |     // 记录初始状态
+    > 101 |     const initialIcon = await fabIcon.textContent();
+          |                                       ^
+      102 |     console.log(`📊 初始视图图标: ${initialIcon}`);
+      103 |     
+      104 |     // 测试切换序列: canvas -> timeline -> island -> canvas
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:101:39
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-webkit/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试三种视图循环切换...
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-webkit/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-webkit/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-webkit/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 快捷键视图切换测试" classname="06-view-switching.spec.ts" time="4.651">
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试快捷键视图切换...
+⌨️ 测试 Ctrl+1 (canvas view)...
+✅ Ctrl+1 快捷键工作正常，canvas视图可见
+⌨️ 测试 Ctrl+2 (timeline view)...
+CONSOLE log: 🔧 [Refactor] 事件清理交由统一拖动系统处理。
+CONSOLE log: 🔧 [UnifiedDrag] 销毁统一拖动系统
+CONSOLE log: 画布系统超级清理完成
+✅ Ctrl+2 快捷键工作正常，timeline视图可见
+⌨️ 测试 Ctrl+3 (island view)...
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+✅ Ctrl+3 快捷键工作正常，island视图可见
+⌨️ 测试 Ctrl+1 (canvas view)...
+✅ Ctrl+1 快捷键工作正常，canvas视图可见
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 视图切换过程中的控制台错误检查" classname="06-view-switching.spec.ts" time="30.21">
+<failure message="06-view-switching.spec.ts:169:3 视图切换过程中的控制台错误检查" type="FAILURE">
+<![CDATA[  [webkit] › 06-view-switching.spec.ts:169:3 › TaskWall 视图切换功能测试 › 视图切换过程中的控制台错误检查 ─────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher')
+
+
+      190 |     // 进行多次视图切换
+      191 |     for (let i = 0; i < 6; i++) { // 两个完整的循环
+    > 192 |       await viewSwitcherFAB.click();
+          |                             ^
+      193 |       await page.waitForTimeout(300);
+      194 |     }
+      195 |     
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:192:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-webkit/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 检查视图切换过程中的控制台错误...
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-webkit/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-webkit/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-webkit/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 视图切换功能性能测试" classname="06-view-switching.spec.ts" time="30.274">
+<failure message="06-view-switching.spec.ts:239:3 视图切换功能性能测试" type="FAILURE">
+<![CDATA[  [webkit] › 06-view-switching.spec.ts:239:3 › TaskWall 视图切换功能测试 › 视图切换功能性能测试 ──────────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher')
+
+
+      246 |     for (let i = 0; i < 10; i++) {
+      247 |       const startTime = Date.now();
+    > 248 |       await viewSwitcherFAB.click();
+          |                             ^
+      249 |       await page.waitForTimeout(100); // 短暂等待
+      250 |       const endTime = Date.now();
+      251 |       performanceMetrics.push(endTime - startTime);
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:248:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-webkit/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试视图切换性能...
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-webkit/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-webkit/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-webkit/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 视图状态持久性测试" classname="06-view-switching.spec.ts" time="30.202">
+<failure message="06-view-switching.spec.ts:267:3 视图状态持久性测试" type="FAILURE">
+<![CDATA[  [webkit] › 06-view-switching.spec.ts:267:3 › TaskWall 视图切换功能测试 › 视图状态持久性测试 ───────────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher')
+
+
+      288 |     
+      289 |     // 再次测试视图切换功能是否仍然工作
+    > 290 |     await viewSwitcherFAB.click();
+          |                           ^
+      291 |     await page.waitForTimeout(500);
+      292 |     await expect(page.locator('.timeline-view')).toBeVisible();
+      293 |     console.log('✅ 页面刷新后视图切换功能仍然正常');
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:290:27
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-webkit/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试视图状态持久性...
+CONSOLE log: 🔧 [Refactor] 事件清理交由统一拖动系统处理。
+CONSOLE log: 🔧 [UnifiedDrag] 销毁统一拖动系统
+CONSOLE log: 画布系统超级清理完成
+✅ Timeline视图已激活
+CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+✅ 页面刷新后回到默认canvas视图
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-webkit/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-webkit/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-webkit/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 边界情况和异常处理测试" classname="06-view-switching.spec.ts" time="30.21">
+<failure message="06-view-switching.spec.ts:296:3 边界情况和异常处理测试" type="FAILURE">
+<![CDATA[  [webkit] › 06-view-switching.spec.ts:296:3 › TaskWall 视图切换功能测试 › 边界情况和异常处理测试 ─────────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher')
+
+
+      302 |     console.log('🔄 测试快速连续点击...');
+      303 |     for (let i = 0; i < 5; i++) {
+    > 304 |       await viewSwitcherFAB.click();
+          |                             ^
+      305 |       await page.waitForTimeout(50); // 很短的等待时间
+      306 |     }
+      307 |     await page.waitForTimeout(1000);
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:304:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-webkit/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试边界情况和异常处理...
+🔄 测试快速连续点击...
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-webkit/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-webkit/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-webkit/error-context.md]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="06-view-switching.spec.ts" timestamp="2025-06-22T17:32:33.478Z" hostname="Mobile Chrome" tests="8" failures="6" skipped="0" time="170.223" errors="0">
+<testcase name="TaskWall 视图切换功能测试 › 应用基本加载测试" classname="06-view-switching.spec.ts" time="4.649">
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy(Array)
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试应用基本加载...
+✅ 页面标题正确
+✅ App根元素可见
+✅ Canvas视图正常加载
+✅ 无JavaScript错误
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 视图切换FAB按钮存在性测试" classname="06-view-switching.spec.ts" time="7.559">
+<failure message="06-view-switching.spec.ts:75:3 视图切换FAB按钮存在性测试" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › 06-view-switching.spec.ts:75:3 › TaskWall 视图切换功能测试 › 视图切换FAB按钮存在性测试 ────────────
+
+    Error: Timed out 5000ms waiting for expect(locator).toBeVisible()
+
+    Locator: locator('.fab-view-switcher')
+    Expected: visible
+    Received: <element(s) not found>
+    Call log:
+      - Expect "toBeVisible" with timeout 5000ms
+      - waiting for locator('.fab-view-switcher')
+
+
+      78 |     // 查找视图切换FAB按钮
+      79 |     const viewSwitcherFAB = page.locator('.fab-view-switcher');
+    > 80 |     await expect(viewSwitcherFAB).toBeVisible();
+         |                                   ^
+      81 |     console.log('✅ 视图切换FAB按钮存在且可见');
+      82 |     
+      83 |     // 检查按钮是否可点击
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:80:35
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-Mobile-Chrome/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-Mobile-Chrome/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-Mobile-Chrome/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy(Array)
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试视图切换FAB按钮...
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-Mobile-Chrome/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-Mobile-Chrome/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-Mobile-Chrome/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 三种视图循环切换测试" classname="06-view-switching.spec.ts" time="30.671">
+<failure message="06-view-switching.spec.ts:94:3 三种视图循环切换测试" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › 06-view-switching.spec.ts:94:3 › TaskWall 视图切换功能测试 › 三种视图循环切换测试 ────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.textContent: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher').locator('.fab-icon')
+
+
+       99 |     
+      100 |     // 记录初始状态
+    > 101 |     const initialIcon = await fabIcon.textContent();
+          |                                       ^
+      102 |     console.log(`📊 初始视图图标: ${initialIcon}`);
+      103 |     
+      104 |     // 测试切换序列: canvas -> timeline -> island -> canvas
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:101:39
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-Mobile-Chrome/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-Mobile-Chrome/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-Mobile-Chrome/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy(Array)
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试三种视图循环切换...
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-Mobile-Chrome/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-Mobile-Chrome/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-Mobile-Chrome/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 快捷键视图切换测试" classname="06-view-switching.spec.ts" time="4.518">
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy(Array)
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试快捷键视图切换...
+⌨️ 测试 Ctrl+1 (canvas view)...
+✅ Ctrl+1 快捷键工作正常，canvas视图可见
+⌨️ 测试 Ctrl+2 (timeline view)...
+CONSOLE log: 🔧 [Refactor] 事件清理交由统一拖动系统处理。
+CONSOLE log: 🔧 [UnifiedDrag] 销毁统一拖动系统
+CONSOLE log: 画布系统超级清理完成
+✅ Ctrl+2 快捷键工作正常，timeline视图可见
+⌨️ 测试 Ctrl+3 (island view)...
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+✅ Ctrl+3 快捷键工作正常，island视图可见
+⌨️ 测试 Ctrl+1 (canvas view)...
+✅ Ctrl+1 快捷键工作正常，canvas视图可见
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 视图切换过程中的控制台错误检查" classname="06-view-switching.spec.ts" time="30.569">
+<failure message="06-view-switching.spec.ts:169:3 视图切换过程中的控制台错误检查" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › 06-view-switching.spec.ts:169:3 › TaskWall 视图切换功能测试 › 视图切换过程中的控制台错误检查 ──────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher')
+
+
+      190 |     // 进行多次视图切换
+      191 |     for (let i = 0; i < 6; i++) { // 两个完整的循环
+    > 192 |       await viewSwitcherFAB.click();
+          |                             ^
+      193 |       await page.waitForTimeout(300);
+      194 |     }
+      195 |     
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:192:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-Mobile-Chrome/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-Mobile-Chrome/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-Mobile-Chrome/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy(Array)
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 检查视图切换过程中的控制台错误...
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-Mobile-Chrome/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-Mobile-Chrome/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-Mobile-Chrome/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 视图切换功能性能测试" classname="06-view-switching.spec.ts" time="30.819">
+<failure message="06-view-switching.spec.ts:239:3 视图切换功能性能测试" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › 06-view-switching.spec.ts:239:3 › TaskWall 视图切换功能测试 › 视图切换功能性能测试 ───────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher')
+
+
+      246 |     for (let i = 0; i < 10; i++) {
+      247 |       const startTime = Date.now();
+    > 248 |       await viewSwitcherFAB.click();
+          |                             ^
+      249 |       await page.waitForTimeout(100); // 短暂等待
+      250 |       const endTime = Date.now();
+      251 |       performanceMetrics.push(endTime - startTime);
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:248:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-Mobile-Chrome/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-Mobile-Chrome/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-Mobile-Chrome/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy(Array)
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试视图切换性能...
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-Mobile-Chrome/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-Mobile-Chrome/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-Mobile-Chrome/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 视图状态持久性测试" classname="06-view-switching.spec.ts" time="30.523">
+<failure message="06-view-switching.spec.ts:267:3 视图状态持久性测试" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › 06-view-switching.spec.ts:267:3 › TaskWall 视图切换功能测试 › 视图状态持久性测试 ────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher')
+
+
+      288 |     
+      289 |     // 再次测试视图切换功能是否仍然工作
+    > 290 |     await viewSwitcherFAB.click();
+          |                           ^
+      291 |     await page.waitForTimeout(500);
+      292 |     await expect(page.locator('.timeline-view')).toBeVisible();
+      293 |     console.log('✅ 页面刷新后视图切换功能仍然正常');
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:290:27
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-Mobile-Chrome/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-Mobile-Chrome/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-Mobile-Chrome/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy(Array)
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试视图状态持久性...
+CONSOLE log: 🔧 [Refactor] 事件清理交由统一拖动系统处理。
+CONSOLE log: 🔧 [UnifiedDrag] 销毁统一拖动系统
+CONSOLE log: 画布系统超级清理完成
+✅ Timeline视图已激活
+CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy(Array)
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+✅ 页面刷新后回到默认canvas视图
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-Mobile-Chrome/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-Mobile-Chrome/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-Mobile-Chrome/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 边界情况和异常处理测试" classname="06-view-switching.spec.ts" time="30.915">
+<failure message="06-view-switching.spec.ts:296:3 边界情况和异常处理测试" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › 06-view-switching.spec.ts:296:3 › TaskWall 视图切换功能测试 › 边界情况和异常处理测试 ──────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher')
+
+
+      302 |     console.log('🔄 测试快速连续点击...');
+      303 |     for (let i = 0; i < 5; i++) {
+    > 304 |       await viewSwitcherFAB.click();
+          |                             ^
+      305 |       await page.waitForTimeout(50); // 很短的等待时间
+      306 |     }
+      307 |     await page.waitForTimeout(1000);
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:304:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-Mobile-Chrome/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-Mobile-Chrome/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-Mobile-Chrome/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy(Array)
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试边界情况和异常处理...
+🔄 测试快速连续点击...
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-Mobile-Chrome/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-Mobile-Chrome/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-Mobile-Chrome/error-context.md]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="06-view-switching.spec.ts" timestamp="2025-06-22T17:32:33.478Z" hostname="Mobile Safari" tests="8" failures="6" skipped="0" time="167.799" errors="0">
+<testcase name="TaskWall 视图切换功能测试 › 应用基本加载测试" classname="06-view-switching.spec.ts" time="4.753">
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试应用基本加载...
+✅ 页面标题正确
+✅ App根元素可见
+✅ Canvas视图正常加载
+✅ 无JavaScript错误
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 视图切换FAB按钮存在性测试" classname="06-view-switching.spec.ts" time="7.721">
+<failure message="06-view-switching.spec.ts:75:3 视图切换FAB按钮存在性测试" type="FAILURE">
+<![CDATA[  [Mobile Safari] › 06-view-switching.spec.ts:75:3 › TaskWall 视图切换功能测试 › 视图切换FAB按钮存在性测试 ────────────
+
+    Error: Timed out 5000ms waiting for expect(locator).toBeVisible()
+
+    Locator: locator('.fab-view-switcher')
+    Expected: visible
+    Received: <element(s) not found>
+    Call log:
+      - Expect "toBeVisible" with timeout 5000ms
+      - waiting for locator('.fab-view-switcher')
+
+
+      78 |     // 查找视图切换FAB按钮
+      79 |     const viewSwitcherFAB = page.locator('.fab-view-switcher');
+    > 80 |     await expect(viewSwitcherFAB).toBeVisible();
+         |                                   ^
+      81 |     console.log('✅ 视图切换FAB按钮存在且可见');
+      82 |     
+      83 |     // 检查按钮是否可点击
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:80:35
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-Mobile-Safari/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-Mobile-Safari/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-Mobile-Safari/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试视图切换FAB按钮...
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-Mobile-Safari/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-Mobile-Safari/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换FAB按钮存在性测试-Mobile-Safari/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 三种视图循环切换测试" classname="06-view-switching.spec.ts" time="30.152">
+<failure message="06-view-switching.spec.ts:94:3 三种视图循环切换测试" type="FAILURE">
+<![CDATA[  [Mobile Safari] › 06-view-switching.spec.ts:94:3 › TaskWall 视图切换功能测试 › 三种视图循环切换测试 ────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.textContent: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher').locator('.fab-icon')
+
+
+       99 |     
+      100 |     // 记录初始状态
+    > 101 |     const initialIcon = await fabIcon.textContent();
+          |                                       ^
+      102 |     console.log(`📊 初始视图图标: ${initialIcon}`);
+      103 |     
+      104 |     // 测试切换序列: canvas -> timeline -> island -> canvas
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:101:39
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-Mobile-Safari/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-Mobile-Safari/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-Mobile-Safari/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试三种视图循环切换...
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-Mobile-Safari/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-Mobile-Safari/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-三种视图循环切换测试-Mobile-Safari/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 快捷键视图切换测试" classname="06-view-switching.spec.ts" time="4.558">
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试快捷键视图切换...
+⌨️ 测试 Ctrl+1 (canvas view)...
+✅ Ctrl+1 快捷键工作正常，canvas视图可见
+⌨️ 测试 Ctrl+2 (timeline view)...
+CONSOLE log: 🔧 [Refactor] 事件清理交由统一拖动系统处理。
+CONSOLE log: 🔧 [UnifiedDrag] 销毁统一拖动系统
+CONSOLE log: 画布系统超级清理完成
+✅ Ctrl+2 快捷键工作正常，timeline视图可见
+⌨️ 测试 Ctrl+3 (island view)...
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+✅ Ctrl+3 快捷键工作正常，island视图可见
+⌨️ 测试 Ctrl+1 (canvas view)...
+✅ Ctrl+1 快捷键工作正常，canvas视图可见
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 视图切换过程中的控制台错误检查" classname="06-view-switching.spec.ts" time="30.157">
+<failure message="06-view-switching.spec.ts:169:3 视图切换过程中的控制台错误检查" type="FAILURE">
+<![CDATA[  [Mobile Safari] › 06-view-switching.spec.ts:169:3 › TaskWall 视图切换功能测试 › 视图切换过程中的控制台错误检查 ──────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher')
+
+
+      190 |     // 进行多次视图切换
+      191 |     for (let i = 0; i < 6; i++) { // 两个完整的循环
+    > 192 |       await viewSwitcherFAB.click();
+          |                             ^
+      193 |       await page.waitForTimeout(300);
+      194 |     }
+      195 |     
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:192:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-Mobile-Safari/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-Mobile-Safari/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-Mobile-Safari/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 检查视图切换过程中的控制台错误...
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-Mobile-Safari/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-Mobile-Safari/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换过程中的控制台错误检查-Mobile-Safari/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 视图切换功能性能测试" classname="06-view-switching.spec.ts" time="30.152">
+<failure message="06-view-switching.spec.ts:239:3 视图切换功能性能测试" type="FAILURE">
+<![CDATA[  [Mobile Safari] › 06-view-switching.spec.ts:239:3 › TaskWall 视图切换功能测试 › 视图切换功能性能测试 ───────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher')
+
+
+      246 |     for (let i = 0; i < 10; i++) {
+      247 |       const startTime = Date.now();
+    > 248 |       await viewSwitcherFAB.click();
+          |                             ^
+      249 |       await page.waitForTimeout(100); // 短暂等待
+      250 |       const endTime = Date.now();
+      251 |       performanceMetrics.push(endTime - startTime);
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:248:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-Mobile-Safari/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-Mobile-Safari/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-Mobile-Safari/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试视图切换性能...
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-Mobile-Safari/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-Mobile-Safari/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图切换功能性能测试-Mobile-Safari/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 视图状态持久性测试" classname="06-view-switching.spec.ts" time="30.15">
+<failure message="06-view-switching.spec.ts:267:3 视图状态持久性测试" type="FAILURE">
+<![CDATA[  [Mobile Safari] › 06-view-switching.spec.ts:267:3 › TaskWall 视图切换功能测试 › 视图状态持久性测试 ────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher')
+
+
+      288 |     
+      289 |     // 再次测试视图切换功能是否仍然工作
+    > 290 |     await viewSwitcherFAB.click();
+          |                           ^
+      291 |     await page.waitForTimeout(500);
+      292 |     await expect(page.locator('.timeline-view')).toBeVisible();
+      293 |     console.log('✅ 页面刷新后视图切换功能仍然正常');
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:290:27
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-Mobile-Safari/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-Mobile-Safari/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-Mobile-Safari/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试视图状态持久性...
+CONSOLE log: 🔧 [Refactor] 事件清理交由统一拖动系统处理。
+CONSOLE log: 🔧 [UnifiedDrag] 销毁统一拖动系统
+CONSOLE log: 画布系统超级清理完成
+✅ Timeline视图已激活
+CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+✅ 页面刷新后回到默认canvas视图
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-Mobile-Safari/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-Mobile-Safari/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-视图状态持久性测试-Mobile-Safari/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="TaskWall 视图切换功能测试 › 边界情况和异常处理测试" classname="06-view-switching.spec.ts" time="30.156">
+<failure message="06-view-switching.spec.ts:296:3 边界情况和异常处理测试" type="FAILURE">
+<![CDATA[  [Mobile Safari] › 06-view-switching.spec.ts:296:3 › TaskWall 视图切换功能测试 › 边界情况和异常处理测试 ──────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('.fab-view-switcher')
+
+
+      302 |     console.log('🔄 测试快速连续点击...');
+      303 |     for (let i = 0; i < 5; i++) {
+    > 304 |       await viewSwitcherFAB.click();
+          |                             ^
+      305 |       await page.waitForTimeout(50); // 很短的等待时间
+      306 |     }
+      307 |     await page.waitForTimeout(1000);
+        at /Users/hao/project/RENWU/frontend/tests/06-view-switching.spec.ts:304:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-Mobile-Safari/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-Mobile-Safari/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-Mobile-Safari/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[CONSOLE debug: [vite] connecting...
+CONSOLE debug: [vite] connected.
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: ✅ [Refactor] 统一拖动系统已接管事件处理。
+CONSOLE log: Home: Starting to fetch data...
+CONSOLE log: Fetching tasks from: /api/tasks
+CONSOLE log: 🚀 开始预热高性能系统...
+CONSOLE log: 🔧 [UnifiedDrag] 初始化统一拖动系统 v2.0
+CONSOLE log: ✅ [UnifiedDrag] 统一拖动系统v2.0初始化完成
+CONSOLE log: Canvas GPU超级加速已启用
+CONSOLE log: 画布系统超级预热完成
+CONSOLE log: Tasks fetched successfully: []
+CONSOLE log: Number of tasks: 0
+CONSOLE log: 📌 [StickyCanvas] 任务列表变化，共 0 个任务
+CONSOLE log: Home: Tasks fetched, count: 0
+CONSOLE log: Home: Tasks data: Proxy
+CONSOLE log: Home: Modules fetched, count: 0
+CONSOLE log: Home: All data loaded, final tasks count: 0
+CONSOLE log: 🎉 高性能拖动系统预热完成！
+CONSOLE log: 📊 任务状态: 总任务 0, 全部渲染
+🔍 测试边界情况和异常处理...
+🔄 测试快速连续点击...
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+CONSOLE log: TaskConnections Performance Metrics: {avgCalculationTime: 0, cacheHitRate: 0.00%, totalCalculations: 0, cacheSize: 0, coordinateCacheSize: 0}
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-Mobile-Safari/test-failed-1.png]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-Mobile-Safari/video.webm]]
+
+[[ATTACHMENT|06-view-switching-TaskWall-视图切换功能测试-边界情况和异常处理测试-Mobile-Safari/error-context.md]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+</testsuites>

@@ -1,6 +1,7 @@
 from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel
+from .models import PriorityLevel, TaskStatus
 
 class ModuleBase(BaseModel):
     name: str
@@ -19,12 +20,29 @@ class TaskBase(BaseModel):
     title: str
     description: str = ""
     urgency: int = 2
+    priority: PriorityLevel = PriorityLevel.MEDIUM
+    status: TaskStatus = TaskStatus.TODO
     module_id: Optional[int] = None
+    category: Optional[str] = None
+    tags: Optional[str] = ""
     parent_id: Optional[int] = None
     estimated_hours: float = 0.0
+    actual_hours: float = 0.0
+    position_x: float = 0.0
+    position_y: float = 0.0
     due_date: Optional[datetime] = None
+    deadline: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    ai_generated: bool = False
+    ai_confidence: float = 0.0
+    ai_reasoning: Optional[str] = None
+    ai_suggested_priority: Optional[int] = None
+    ai_suggested_category: Optional[str] = None
     island_id: int = -1
     island_override: Optional[int] = None
+    vector_id: Optional[str] = None
+    last_vector_update: Optional[datetime] = None
 
 class TaskCreate(TaskBase):
     pass
@@ -42,10 +60,30 @@ class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     urgency: Optional[int] = None
+    priority: Optional[PriorityLevel] = None
+    status: Optional[TaskStatus] = None
     module_id: Optional[int] = None
+    category: Optional[str] = None
+    tags: Optional[str] = None
     parent_id: Optional[int] = None
     estimated_hours: Optional[float] = None
+    actual_hours: Optional[float] = None
+    position_x: Optional[float] = None
+    position_y: Optional[float] = None
     due_date: Optional[datetime] = None
+    deadline: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    ai_generated: Optional[bool] = None
+    ai_confidence: Optional[float] = None
+    ai_reasoning: Optional[str] = None
+    ai_suggested_priority: Optional[int] = None
+    ai_suggested_category: Optional[str] = None
+    island_id: Optional[int] = None
+    island_override: Optional[int] = None
+    vector_id: Optional[str] = None
+    last_vector_update: Optional[datetime] = None
 
 class HistoryRead(BaseModel):
     id: int
@@ -178,3 +216,73 @@ class IslandRead(IslandBase):
 
     class Config:
         from_attributes = True
+
+# AI v3.0 Schemas
+class AITaskParseRequest(BaseModel):
+    text: str
+    context: Optional[dict] = {}
+    full_analysis: bool = True
+
+class AITaskParseResponse(BaseModel):
+    suggested_task: dict
+    confidence: float
+    reasoning: List[str] = []
+    ai_enhancements: dict = {}
+    similar_tasks: List[dict] = []
+    success: bool = True
+    error: Optional[str] = None
+
+class AITaskAnalysisRequest(BaseModel):
+    task_data: dict
+    context: Optional[dict] = {}
+
+class AITaskAnalysisResponse(BaseModel):
+    classification_result: Optional[dict] = None
+    similarity_result: Optional[dict] = None
+    priority_result: Optional[dict] = None
+    dependency_result: Optional[dict] = None
+    workload_result: Optional[dict] = None
+    overall_confidence: float = 0.0
+    processing_time: float = 0.0
+    recommendations: List[str] = []
+    success: bool = True
+    error: Optional[str] = None
+
+class AIBatchProcessRequest(BaseModel):
+    task_inputs: List[str]
+    context: Optional[dict] = {}
+
+class AIBatchProcessResponse(BaseModel):
+    results: List[dict]
+    success: bool = True
+    error: Optional[str] = None
+
+class AIInsightsRequest(BaseModel):
+    user_id: str = "default"
+    time_frame: str = "this_week"
+
+class AIInsightsResponse(BaseModel):
+    insights: dict
+    task_count: int
+    recommendations: List[str] = []
+    success: bool = True
+    error: Optional[str] = None
+
+class AIOptimizeTasksRequest(BaseModel):
+    tasks: List[dict]
+    context: Optional[dict] = {}
+
+class AIOptimizeTasksResponse(BaseModel):
+    original_task_count: int
+    analysis_results: dict
+    recommendations: List[str] = []
+    optimized_order: List[int] = []
+    processing_time: float = 0.0
+    success: bool = True
+    error: Optional[str] = None
+
+class AIServiceStatusResponse(BaseModel):
+    overall_health: str
+    services: dict
+    vector_database: Optional[dict] = None
+    timestamp: str

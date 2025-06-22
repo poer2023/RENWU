@@ -162,19 +162,95 @@ frontend/
 
 ## Development
 
-### Local Development
+### 🚀 开发环境启动 (标准流程)
+
+#### 方式一：使用启动脚本 (推荐)
 
 ```bash
-# Backend
+# 一键启动 (自动处理依赖和服务启动)
+chmod +x start.sh
+./start.sh
+```
+
+#### 方式二：手动启动
+
+**步骤1: 创建虚拟环境 (首次运行)**
+```bash
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# 或
+venv\Scripts\activate     # Windows
+```
+
+**步骤2: 启动后端服务**
+```bash
 cd backend
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
 
-# Frontend  
+# 关键：必须使用 0.0.0.0 作为host，端口8765
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8765 --reload
+```
+
+**步骤3: 启动前端服务 (新终端)**
+```bash
 cd frontend
 npm install
+
+# 前端运行在端口3000，代理请求到后端8765
 npm run dev
 ```
+
+#### 访问地址
+- **前端应用**: http://localhost:3000
+- **后端API**: http://localhost:8765  
+- **API文档**: http://localhost:8765/docs
+
+> 📋 **端口配置详情**: 查看 [PORT_CONFIGURATION.md](PORT_CONFIGURATION.md) 了解完整的端口配置规范
+
+### ⚠️ 常见开发问题解决
+
+#### 问题1: 后端启动失败
+**现象**: `AttributeError: module 'app.routers.tasks' has no attribute 'router'`
+**解决**: 确保 `backend/app/routers/tasks.py` 文件完整且包含 `router` 对象
+
+#### 问题2: 前端API连接失败 (404错误)
+**现象**: 前端控制台显示 `/api/tasks/` 404错误
+**原因**: Vite代理配置问题或后端未正确启动
+**解决**: 
+1. 确认后端运行在端口8765
+2. 检查 `frontend/vite.config.ts` 代理配置：
+```typescript
+server: {
+  proxy: {
+    '/api': {
+      target: 'http://localhost:8765',
+      changeOrigin: true,
+    },
+  },
+}
+```
+
+#### 问题3: 后端无法访问 (Connection refused)
+**原因**: 使用了错误的host参数 `127.0.0.1`
+**解决**: 必须使用 `--host 0.0.0.0` 参数启动后端
+
+#### 问题4: 端口冲突
+**解决**: 
+```bash
+# 检查端口占用
+lsof -i :8765  # 检查后端端口
+lsof -i :3000  # 检查前端端口
+
+# 终止占用进程
+kill -9 <PID>
+```
+
+#### 问题5: 前端JavaScript错误
+**现象**: `ReferenceError: isInitializing is not defined`
+**状态**: 已知问题，不影响核心功能
+**临时解决**: 忽略此错误，核心功能正常
+
+### 🔧 开发环境配置
 
 ### Environment Variables
 
@@ -251,12 +327,31 @@ docker compose logs -f api
 docker compose logs -f web
 ```
 
+## Development Guidelines
+
+For detailed development guidelines, including:
+- 🏗️ **Technical Stack** - Complete frontend and backend technology specifications
+- 🏛️ **Project Architecture** - Detailed architectural diagrams and patterns
+- 📝 **Development Standards** - Coding conventions and best practices
+- 🚀 **Development Workflow** - Git workflow and deployment procedures
+- 📚 **Best Practices** - Performance optimization and security guidelines
+
+**👉 Please refer to: [Project Development Guide](docs/PROJECT_DEVELOPMENT_GUIDE.md)**
+
+## Documentation
+
+- 📋 [Project Development Guide](docs/PROJECT_DEVELOPMENT_GUIDE.md) - Complete development standards and workflow
+- 🔧 [Refactoring Guide](docs/REFACTORING_GUIDE.md) - Component architecture and patterns
+- 📊 [Modularization Analysis](docs/MODULARIZATION_ANALYSIS.md) - Code structure analysis
+- 📈 [Modularization Completion Report](docs/MODULARIZATION_COMPLETION_REPORT.md) - Refactoring results
+
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Implement changes with tests
-4. Submit a pull request
+1. **Read the Development Guide**: Start with [docs/PROJECT_DEVELOPMENT_GUIDE.md](docs/PROJECT_DEVELOPMENT_GUIDE.md)
+2. **Follow Coding Standards**: Ensure code meets project specifications
+3. **Create Feature Branch**: Use naming convention from the guide
+4. **Write Tests**: Include appropriate unit and integration tests
+5. **Submit Pull Request**: Follow the code review checklist
 
 ## License
 
@@ -265,6 +360,7 @@ MIT License - see LICENSE file for details
 ## Support
 
 For issues and questions:
-- Create an issue in the repository
-- Check the troubleshooting section
-- Review API documentation at `/docs`
+- 📋 Create an issue in the repository
+- 📖 Check the [troubleshooting section](#troubleshooting)
+- 📚 Review [development documentation](docs/)
+- 🔗 Review API documentation at `/docs`

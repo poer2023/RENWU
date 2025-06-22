@@ -1,99 +1,110 @@
 <template>
   <div 
     ref="canvasContainer" 
-    :class="['sticky-canvas', { 'dragging': dragState.isDragging, 'panning': panState.isPanning }]"
-    @mousedown="handleCanvasMouseDown"
-    @wheel="handleCanvasWheel"
+    class="sticky-canvas"
+    :class="{ 'dragging': unifiedDrag.isTaskDragging(), 'panning': panZoom.panState.value.isPanning }"
+    @wheel.prevent="handleCanvasWheel"
     @contextmenu.prevent
+    @click="handleCanvasClick"
   >
     <!-- Canvas content with transform -->
     <div 
+      ref="canvasContentRef"
       class="canvas-content" 
-      :style="canvasContentStyle"
+      :style="panZoom.canvasContentStyle.value"
     >
       <!-- Canvas background grid -->
-      <div class="canvas-grid"></div>
+      <CanvasGrid />
       
-      <!-- Task wrappers with drag and connection functionality -->
-      <div
+      <!-- 正常任务渲染 - 恢复原始功能 -->
+      <div 
         v-for="task in tasks"
-        :key="task.id"
-        ref="taskElements"
-        :class="['task-wrapper', { 'dragging': dragState.task?.id === task.id }]"
+        :key="`task-${task.id}`"
+        :class="['task-wrapper', { 'dragging': unifiedDrag.getCurrentDragTask()?.id === task.id }]"
         :style="getTaskPosition(task)"
         :data-task-id="task.id"
-        @mousedown="startDrag(task, $event)"
       >
+        <!-- 🔧 修复14: 确保TaskCard事件优先级和可交互性 -->
         <TaskCard
           :task="task"
           :is-selected="selectedTask?.id === task.id"
           @select="selectTask"
           @openDetails="handleOpenDetails"
-          @startConnection="handleStartConnection"
+          @startConnection="connections.startConnection"
+          @getTaskPosition="getTaskPositionData"
+          @subtasksCreated="handleSubtasksCreated"
+          style="position: relative; z-index: 10; pointer-events: auto;"
         />
       </div>
 
-      <!-- Task connections -->
+      <!-- 正常任务连线 - 恢复原始功能 -->
       <TaskConnections
         :connections="dependencies"
-        :task-positions="taskPositions"
+        :task-positions="positions.taskPositions.value"
+        :task-dimensions="positions.taskDimensions.value"
         :canvas-width="canvasSize.width"
         :canvas-height="canvasSize.height"
-        :preview-connection="connectionPreview"
+        :viewport="panZoom.viewport.value"
+        :preview-connection="connections.connectionPreview.value"
+        @connection-double-click="handleConnectionDoubleClick"
       />
 
-      <!-- Island Headers -->
-      <div v-if="islandView" class="island-headers">
-        <div
-          v-for="(island, index) in islands"
-          :key="island.id"
-          :class="['island-header', { 'collapsed': island.collapsed }]"
-          :style="getIslandHeaderStyle(island, index)"
-          @click="toggleIsland(island)"
-        >
-          <div class="island-title">
-            <span class="island-icon">🏝️</span>
-            <span class="island-name">{{ island.name }}</span>
-            <span class="island-count">({{ island.tasks.length }})</span>
-          </div>
-          <div v-if="island.keywords" class="island-keywords">
-            <span v-for="keyword in island.keywords.slice(0, 3)" :key="keyword" class="keyword-tag">
-              {{ keyword }}
-            </span>
-          </div>
-        </div>
-      </div>
+      <!-- Island View -->
+      <IslandView
+        ref="islandViewRef"
+        :enabled="islandView"
+        :islands="islands"
+        :container-width="containerWidth"
+        :container-height="containerHeight"
+        :task-positions="positions.taskPositions.value"
+        @toggle-island="handleToggleIsland"
+        @arrange-tasks-in-islands="handleArrangeTasksInIslands"
+      />
     </div>
 
     <!-- Mini Map -->
     <MiniMap
       :tasks="tasks"
-      :task-positions="taskPositions"
+      :task-positions="positions.taskPositions.value"
       :canvas-width="canvasSize.width"
       :canvas-height="canvasSize.height"
-      :viewport-x="-viewport.x / viewport.scale"
-      :viewport-y="-viewport.y / viewport.scale"
-      :viewport-width="viewportWidth"
-      :viewport-height="viewportHeight"
+      :viewport-x="-panZoom.viewport.value.x / panZoom.viewport.value.scale"
+      :viewport-y="-panZoom.viewport.value.y / panZoom.viewport.value.scale"
+      :viewport-width="panZoom.viewportWidth.value"
+      :viewport-height="panZoom.viewportHeight.value"
       :selected-task-id="selectedTask?.id"
       @focus-task="focusOnTask"
       @move-viewport="handleViewportMove"
     />
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, computed, watch, toRef } from 'vue'
 import TaskCard from './TaskCard.vue'
 import TaskConnections from './TaskConnections.vue'
 import MiniMap from './MiniMap.vue'
-import { type Task, type TaskDependency, useTaskStore } from '@/stores/tasks'
+import IslandView from './IslandView.vue'
+import CanvasGrid from './canvas/CanvasGrid.vue'
+import { type Task, useTaskStore } from '@/stores/tasks'
 import { useSettingsStore } from '@/stores/settings'
 import { autoArrange } from '@/utils/autoArrange'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { throttle } from 'lodash'
+
+// Import composables
+import { useUnifiedDragSystem } from '@/composables/useUnifiedDragSystem'
+import { useUltraPerformancePanZoom } from '@/composables/useUltraPerformancePanZoom'
+import { useTaskPositions } from '@/composables/useTaskPositions'
+import { useConnections } from '@/composables/useConnections'
 
 interface Props {
   tasks: Task[]
   selectedTask?: Task | null
+  islandView?: boolean
+  islandViewEnabled?: boolean
+  themeIslands?: any[]
 }
 
 const props = defineProps<Props>()
@@ -103,129 +114,230 @@ const emit = defineEmits<{
   autoArrangeComplete: []
 }>()
 
-// Add debug watching for tasks prop
-watch(() => props.tasks, (newTasks, oldTasks) => {
-  console.log('StickyCanvas: tasks prop changed:', newTasks)
-  console.log('StickyCanvas: tasks length:', newTasks?.length || 0)
-  console.log('StickyCanvas: old tasks length:', oldTasks?.length || 0)
-  if (newTasks && newTasks.length > 0) {
-    console.log('StickyCanvas: first task:', newTasks[0])
-    console.log('StickyCanvas: task positions before init:', Object.keys(taskPositions.value).length)
-    
-    // Initialize positions for new tasks immediately
-    nextTick(() => {
-      initializeTaskPositions()
-      console.log('StickyCanvas: task positions after init:', Object.keys(taskPositions.value).length)
-    })
-  }
-}, { immediate: true })
-
 const settingsStore = useSettingsStore()
 const taskStore = useTaskStore()
 
 const canvasContainer = ref<HTMLElement>()
 const taskElements = ref<HTMLElement[]>([])
+const islandViewRef = ref<InstanceType<typeof IslandView>>()
 
-// Task positions (task_id -> {x, y}) - Fix Record type issue
-const taskPositions = ref<{ [key: number]: { x: number; y: number } }>({})
+// 状态：用于区分画布上的单击和拖动
+const canvasClickState = ref<{
+  isDown: boolean
+  startX: number
+  startY: number
+  isDragging: boolean
+}>({ isDown: false, startX: 0, startY: 0, isDragging: false })
 
-// Connection state
-const connectionPreview = ref<{
-  fromTaskId: number
-  toX: number
-  toY: number
-} | null>(null)
+// Canvas size
+const canvasSize = ref({ width: 6000, height: 6000 })
 
-// Canvas size - 动态计算实际需要的边界
-const canvasSize = ref({ width: 2000, height: 2000 })
+// Container dimensions for island view
+const containerWidth = computed(() => canvasContainer.value?.getBoundingClientRect().width || 1200)
+const containerHeight = computed(() => canvasContainer.value?.getBoundingClientRect().height || 800)
 
-// Canvas viewport state (for pan and zoom)
-const viewport = ref({
-  x: 0,        // 水平偏移
-  y: 0,        // 垂直偏移
-  scale: 1,    // 缩放比例
-  minScale: 0.1,  // 最小缩放
-  maxScale: 3     // 最大缩放
+// Use composables
+const tasksRef = toRef(props, 'tasks')
+
+// Task positions management
+const positions = useTaskPositions(tasksRef, {
+  onPositionChange: async (taskId: number, x: number, y: number) => {
+    try {
+      await taskStore.updateTask(taskId, { 
+        position_x: x, 
+        position_y: y 
+      })
+    } catch (error) {
+      console.error('保存任务位置失败:', error)
+    }
+  },
+  onBoundsUpdate: (bounds) => {
+    canvasSize.value = bounds
+  }
 })
 
-// Pan state for middle mouse button dragging
-const panState = ref({
-  isPanning: false,
-  startX: 0,
-  startY: 0,
-  startViewportX: 0,
-  startViewportY: 0
+// Pan and zoom management
+const panZoom = useUltraPerformancePanZoom(
+  canvasContainer,
+  canvasSize,
+  {
+    onViewportChange: (viewport: any) => {
+      // 移除虚拟化更新，使用原始渲染
+    }
+  }
+)
+
+// 移除虚拟化系统，使用原始任务渲染
+
+// 统一拖动系统
+const unifiedDrag = useUnifiedDragSystem(
+  canvasContainer,
+  panZoom.viewport,
+  positions.taskPositions,
+  {
+    onCanvasPanStart: () => {
+      console.log('🚀 [StickyCanvas] 画布平移开始')
+    },
+    onCanvasPanMove: (deltaX: number, deltaY: number) => {
+      // 使用panZoom的高性能平移方法
+      panZoom.panBy(deltaX, deltaY)
+    },
+    onCanvasPanEnd: () => {
+      console.log('🛑 [StickyCanvas] 画布平移结束')
+    },
+    onTaskDragStart: (task: Task) => {
+      console.log('🚀 [StickyCanvas] 任务拖动开始:', task.title)
+      selectTask(task)
+    },
+    onTaskDragMove: (task: Task, position: { x: number; y: number }) => {
+      // 高性能实时位置更新 - 移除console.log提升性能
+      positions.setTaskPosition(task.id, position.x, position.y, true)
+    },
+    onTaskDragEnd: (task: Task, position: { x: number; y: number }) => {
+      console.log('🛑 [StickyCanvas] 任务拖动结束:', task.title, position)
+      // 获取约束后的位置并保存到后端
+      const constrainedPosition = positions.taskPositions.value[task.id] || position
+      updateTaskPosition(task.id, constrainedPosition.x, constrainedPosition.y)
+    },
+    onTaskSelect: (task: Task | null) => {
+      emit('selectTask', task)
+    }
+  }
+)
+
+// Connection management
+const connections = useConnections(canvasContainer, panZoom.viewport, {
+  onConnectionCreate: async (fromTaskId, toTaskId) => {
+    try {
+      await taskStore.createDependency({
+        from_task_id: fromTaskId,
+        to_task_id: toTaskId,
+        dependency_type: 'blocks'
+      })
+      console.log('连接创建成功:', fromTaskId, '->', toTaskId)
+      await taskStore.fetchDependencies()
+    } catch (error) {
+      console.error('Failed to create dependency:', error)
+      ElMessage.error('创建连接失败')
+    }
+  },
+  onConnectionEnd: () => {
+    // 重置所有任务卡片的连接状态
+    console.log('连接结束，重置所有任务的连接状态')
+    // 这里可以通过事件或其他方式通知任务卡片重置状态
+    // 由于我们没有直接的引用，我们可以使用全局事件
+    document.dispatchEvent(new CustomEvent('connection-ended'))
+  }
 })
+
+// 添加一个canvas content元素的引用
+const canvasContentRef = ref<HTMLElement>()
 
 // Dependencies from store
 const dependencies = computed(() => taskStore.dependencies)
 
-// Computed viewport dimensions for minimap
-const viewportWidth = computed(() => {
-  if (!canvasContainer.value) return 1200 / viewport.value.scale
-  return canvasContainer.value.getBoundingClientRect().width / viewport.value.scale
+
+// 使用虚拟化系统替代旧的可见任务计算
+// 旧的 visibleTasks computed 已被 virtualizedTasks.visibleTasks 替代
+
+// 性能监控
+const performanceMetrics = ref({
+  lastRenderTime: 0,
+  frameCount: 0,
+  avgFrameTime: 0
 })
 
-const viewportHeight = computed(() => {
-  if (!canvasContainer.value) return 800 / viewport.value.scale
-  return canvasContainer.value.getBoundingClientRect().height / viewport.value.scale
-})
+// 优化的渲染函数
+function optimizedRender() {
+  const startTime = performance.now()
+  
+  // 使用 nextTick 确保 DOM 更新完成
+  nextTick(() => {
+    const endTime = performance.now()
+    const renderTime = endTime - startTime
+    
+    performanceMetrics.value.lastRenderTime = renderTime
+    performanceMetrics.value.frameCount++
+    
+    // 计算平均帧时间
+    performanceMetrics.value.avgFrameTime = 
+      (performanceMetrics.value.avgFrameTime * (performanceMetrics.value.frameCount - 1) + renderTime) / 
+      performanceMetrics.value.frameCount
+    
+    // 性能警告
+    if (renderTime > 16.67) { // 超过60fps
+      console.warn(`Canvas render time: ${renderTime.toFixed(2)}ms (over 16.67ms threshold)`)
+    }
+  })
+}
 
-// Canvas content style with transform
-const canvasContentStyle = computed(() => ({
-  width: `${canvasSize.value.width}px`,
-  height: `${canvasSize.value.height}px`,
-  transform: `translate(${viewport.value.x}px, ${viewport.value.y}px) scale(${viewport.value.scale})`,
-  transformOrigin: '0 0',
-  position: 'relative'
-}))
+// 使用 throttle 限制高频操作 - 针对平移优化
+const throttledViewportUpdate = throttle(() => {
+  // 只有在非平移状态或平移结束时才触发重新计算
+  if (!panZoom.panState.value.isPanning) {
+    optimizedRender()
+  }
+}, 16) // 60fps
 
-// Drag state
-const dragState = ref<{
-  isDragging: boolean
-  task: Task | null
-  startX: number
-  startY: number
-  offsetX: number
-  offsetY: number
-}>({
-  isDragging: false,
-  task: null,
-  startX: 0,
-  startY: 0,
-  offsetX: 0,
-  offsetY: 0
-})
+// 专门为平移优化的更轻量级更新函数
+const lightweightPanUpdate = throttle(() => {
+  // 平移时不触发复杂的重新渲染，只更新变换
+  // 这样可以保持流畅的平移效果
+}, 8) // 120fps，更流畅的平移
+
+// 在script setup顶部添加任务尺寸管理
+const taskDimensions = ref<{ [key: number]: { width: number; height: number } }>({})
 
 // Methods
 function getTaskPosition(task: Task) {
-  const position = taskPositions.value[task.id] || getDefaultPosition(task)
-  const isDragging = dragState.value.task?.id === task.id
+  const position = positions.taskPositions.value[task.id] || positions.getDefaultPosition(task)
+  const isDragging = unifiedDrag.getCurrentDragTask()?.id === task.id
   
+  // 🔧 修复: 计算任务的显示顺序，避免重叠
+  const taskIndex = props.tasks.findIndex((t: Task) => t.id === task.id)
+  const taskOrder = taskIndex >= 0 ? taskIndex : 0
+  
+  // 🔧 修复11: 确保任务位置始终有效，避免"element is outside of the viewport"错误
+  const safeX = Math.max(0, position.x || 0)
+  const safeY = Math.max(0, position.y || 0)
+  
+  // 拖动时使用特殊样式优化
+  if (isDragging) {
+    return {
+      position: 'absolute' as const,
+      left: '0px',
+      top: '0px',
+      transform: `translate3d(${safeX}px, ${safeY}px, 0) scale(1.02)`,
+      zIndex: 1000, // 拖动时最高优先级
+      willChange: 'transform' as const,
+      transition: 'none' as const, // 拖动时禁用过渡动画
+      pointerEvents: 'auto' as const,
+      // 🔧 修复12: 确保在视口内可见
+      visibility: 'visible' as const,
+      opacity: 1,
+      // 🔧 修复: 设置任务顺序变量
+      '--task-order': taskOrder.toString(),
+    }
+  }
+  
+  // 正常状态
   return {
-    position: 'absolute',
-    left: `${position.x}px`,
-    top: `${position.y}px`,
-    zIndex: isDragging ? 1000 : 1,
-    transform: isDragging ? 'translate3d(0, 0, 0) scale(1.02)' : 'translate3d(0, 0, 0)',
-    willChange: isDragging ? 'transform' : 'auto'
+    position: 'absolute' as const,
+    left: '0px',
+    top: '0px',
+    transform: `translate3d(${safeX}px, ${safeY}px, 0)`,
+    zIndex: 1 + taskOrder, // 基于索引的 z-index
+    transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)' as const,
+    pointerEvents: 'auto' as const,
+    // 🔧 修复: 确保在视口内可见
+    visibility: 'visible' as const,
+    opacity: 1,
+    // 🔧 修复: 设置任务顺序变量
+    '--task-order': taskOrder.toString(),
   }
 }
 
-function getDefaultPosition(task: Task) {
-  // Generate default positions based on module and urgency
-  const moduleOffset = (task.module_id || 0) * 250
-  const urgencyOffset = task.urgency * 60
-  const randomOffset = Math.random() * 100
-  
-  const position = {
-    x: 50 + moduleOffset + randomOffset,
-    y: 50 + urgencyOffset + randomOffset
-  }
-  
-  taskPositions.value[task.id] = position
-  return position
-}
+// handleTaskMouseDown 已被统一拖动系统替代，不再需要
 
 function selectTask(task: Task) {
   emit('selectTask', task)
@@ -235,318 +347,227 @@ function handleOpenDetails(task: Task, position: { x: number, y: number }) {
   emit('openTaskDetails', task, position)
 }
 
-function startDrag(task: Task, event: MouseEvent) {
-  if (event.button !== 0) return // Only left mouse button
-  
-  event.preventDefault()
-  event.stopPropagation()
-  
-  const rect = canvasContainer.value?.getBoundingClientRect()
-  if (!rect) return
-  
-  // Cache canvas rect and card dimensions for performance
-  canvasRect = rect
-  const cardElement = document.querySelector(`[data-task-id="${task.id}"]`) as HTMLElement
-  if (cardElement) {
-    cardDimensions = {
-      width: cardElement.offsetWidth,
-      height: cardElement.offsetHeight
-    }
-  }
-  
-  const currentPos = taskPositions.value[task.id] || getDefaultPosition(task)
-  
-  // 计算鼠标相对于卡片的精确偏移量（考虑缩放和视口变换）
-  const canvasMouseX = (event.clientX - rect.left - viewport.value.x) / viewport.value.scale
-  const canvasMouseY = (event.clientY - rect.top - viewport.value.y) / viewport.value.scale
-  
-  const offsetX = canvasMouseX - currentPos.x
-  const offsetY = canvasMouseY - currentPos.y
-  
-  dragState.value = {
-    isDragging: true,
-    task,
-    startX: event.clientX,
-    startY: event.clientY,
-    offsetX,
-    offsetY
-  }
-  
-  // Add global mouse event listeners with optimized settings for smooth dragging
-  document.addEventListener('mousemove', handleDrag, { passive: false, capture: true })
-  document.addEventListener('mouseup', stopDrag, { passive: false, capture: true })
-  
-  // Add styles for better dragging experience
-  document.body.style.userSelect = 'none'
-  document.body.style.cursor = 'grabbing'
-  document.body.style.pointerEvents = 'none' // Prevent interference from other elements
-  
-  // Enable GPU acceleration for the dragging task
-  if (cardElement) {
-    cardElement.style.willChange = 'transform'
-    cardElement.style.transition = 'none'
-  }
-  
-  // Select the task being dragged
-  selectTask(task)
+// 获取任务位置数据
+function getTaskPositionData(taskId: number) {
+  return positions.taskPositions.value[taskId] || { x: 0, y: 0 }
 }
 
-// Cache for better performance
-let canvasRect: DOMRect | null = null
-let cardDimensions = { width: 200, height: 120 }
-
-function handleDrag(event: MouseEvent) {
-  if (!dragState.value.isDragging || !dragState.value.task) return
+// 处理子任务创建完成
+function handleSubtasksCreated(data: { parentTask: Task, subtasks: Task[] }) {
+  console.log('子任务创建完成:', data)
   
-  event.preventDefault()
+  // 刷新任务位置数据
+  positions.updateTaskDimensions()
   
-  // Calculate position immediately without RAF for better responsiveness
-  if (!canvasRect) {
-    canvasRect = canvasContainer.value?.getBoundingClientRect() || null
-  }
-  
-  if (!canvasRect) return
-  
-  // 在画布坐标系中计算鼠标位置
-  const canvasMouseX = (event.clientX - canvasRect.left - viewport.value.x) / viewport.value.scale
-  const canvasMouseY = (event.clientY - canvasRect.top - viewport.value.y) / viewport.value.scale
-  
-  // 用固定的偏移量计算新位置，保持鼠标相对于卡片的位置不变
-  const canvasX = canvasMouseX - dragState.value.offsetX
-  const canvasY = canvasMouseY - dragState.value.offsetY
-  
-  // 只约束到容器的实际可见范围内，确保卡片边界与可视区域一致
-  const containerRect = canvasContainer.value?.getBoundingClientRect()
-  if (!containerRect) return
-  
-  const viewportWidth = containerRect.width / viewport.value.scale
-  const viewportHeight = containerRect.height / viewport.value.scale
-  const viewportLeft = -viewport.value.x / viewport.value.scale
-  const viewportTop = -viewport.value.y / viewport.value.scale
-  
-  const padding = 10
-  const constrainedX = Math.max(viewportLeft + padding, Math.min(canvasX, viewportLeft + viewportWidth - cardDimensions.width - padding))
-  const constrainedY = Math.max(viewportTop + padding, Math.min(canvasY, viewportTop + viewportHeight - cardDimensions.height - padding))
-  
-  // Update position immediately with requestAnimationFrame for smoother updates
-  requestAnimationFrame(() => {
-    taskPositions.value[dragState.value.task!.id] = {
-      x: constrainedX,
-      y: constrainedY
-    }
-  })
-  
-  // In island view, highlight target island
-  if (islandView.value) {
-    highlightTargetIsland(event.clientX, event.clientY)
-  }
-}
-
-function stopDrag(event?: MouseEvent) {
-  if (!dragState.value.isDragging) return
-  
-  const draggedTask = dragState.value.task
-  
-  // 动态扩展画布边界以容纳新位置的任务
-  if (draggedTask) {
-    const position = taskPositions.value[draggedTask.id]
+  // 可以添加其他处理逻辑，比如自动聚焦到新创建的子任务区域
+  if (data.subtasks.length > 0) {
+    const firstSubtask = data.subtasks[0]
+    const position = positions.taskPositions.value[firstSubtask.id]
     if (position) {
-      const newCanvasWidth = Math.max(canvasSize.value.width, position.x + cardDimensions.width + 200)
-      const newCanvasHeight = Math.max(canvasSize.value.height, position.y + cardDimensions.height + 200)
-      canvasSize.value = { width: newCanvasWidth, height: newCanvasHeight }
+      // 可以添加平滑滚动到子任务位置的逻辑
+      console.log('新子任务位置:', position)
     }
   }
-  
-  // Handle island view task reassignment
-  if (islandView.value && draggedTask && event) {
-    const targetIsland = findTargetIsland(event.clientX, event.clientY)
-    if (targetIsland) {
-      handleTaskIslandChange(draggedTask, targetIsland)
-    }
-  }
-  
-  // Clear cached values
-  canvasRect = null
-  
-  // Remove global mouse event listeners
-  document.removeEventListener('mousemove', handleDrag, { capture: true } as any)
-  document.removeEventListener('mouseup', stopDrag, { capture: true } as any)
-  
-  // Restore default styles
-  document.body.style.userSelect = ''
-  document.body.style.cursor = ''
-  document.body.style.pointerEvents = ''
-  
-  // Clean up GPU acceleration
-  if (draggedTask) {
-    const cardElement = document.querySelector(`[data-task-id="${draggedTask.id}"]`) as HTMLElement
-    if (cardElement) {
-      cardElement.style.willChange = 'auto'
-      cardElement.style.transition = ''
-    }
-  }
-  
-  // Clear island highlights
-  if (islandView.value) {
-    clearIslandHighlights()
-  }
-  
-  dragState.value = {
-    isDragging: false,
-    task: null,
-    startX: 0,
-    startY: 0,
-    offsetX: 0,
-    offsetY: 0
-  }
 }
 
-// Connection handling
-const connectionState = ref<{
-  isConnecting: boolean
-  fromTaskId: number | null
-  startX: number
-  startY: number
-}>({
-  isConnecting: false,
-  fromTaskId: null,
-  startX: 0,
-  startY: 0
-})
-
-function handleStartConnection(fromTaskId: number, event: MouseEvent) {
-  console.log('StickyCanvas: handleStartConnection called with task:', fromTaskId)
-  event.preventDefault()
-  event.stopPropagation()
-  
-  connectionState.value = {
-    isConnecting: true,
-    fromTaskId,
-    startX: event.clientX,
-    startY: event.clientY
-  }
-  
-  console.log('Connection state set:', connectionState.value)
-  
-  // Start tracking mouse movement for preview
-  document.addEventListener('mousemove', handleConnectionDrag)
-  document.addEventListener('mouseup', handleConnectionEnd)
-  
-  // Show preview connection
-  updateConnectionPreview(event.clientX, event.clientY)
-}
-
-function handleConnectionDrag(event: MouseEvent) {
-  if (!connectionState.value.isConnecting) return
-  updateConnectionPreview(event.clientX, event.clientY)
-}
-
-function updateConnectionPreview(clientX: number, clientY: number) {
-  if (!connectionState.value.fromTaskId || !canvasContainer.value) return
-  
-  const canvasRect = canvasContainer.value.getBoundingClientRect()
-  connectionPreview.value = {
-    fromTaskId: connectionState.value.fromTaskId,
-    toX: clientX - canvasRect.left,
-    toY: clientY - canvasRect.top
-  }
-}
-
-function handleConnectionEnd(event: MouseEvent) {
-  if (!connectionState.value.isConnecting) return
-  
-  // Clean up event listeners
-  document.removeEventListener('mousemove', handleConnectionDrag)
-  document.removeEventListener('mouseup', handleConnectionEnd)
-  
-  // Find target task
-  const targetElement = document.elementFromPoint(event.clientX, event.clientY)
-  const taskElement = targetElement?.closest('[data-task-id]') as HTMLElement
-  
-  if (taskElement) {
-    const toTaskId = parseInt(taskElement.dataset.taskId || '0')
-    if (toTaskId && toTaskId !== connectionState.value.fromTaskId) {
-      // Create dependency
-      createTaskDependency(connectionState.value.fromTaskId!, toTaskId)
-    }
-  }
-  
-  // Reset connection state
-  connectionState.value = {
-    isConnecting: false,
-    fromTaskId: null,
-    startX: 0,
-    startY: 0
-  }
-  connectionPreview.value = null
-}
-
-async function createTaskDependency(fromTaskId: number, toTaskId: number) {
+// 处理双击连线删除
+async function handleConnectionDoubleClick(connection: any) {
   try {
-    await taskStore.createDependency(fromTaskId, toTaskId)
-  } catch (error) {
-    console.error('Failed to create dependency:', error)
-  }
-}
-
-// Initialize positions for new tasks
-function initializeTaskPositions() {
-  props.tasks.forEach(task => {
-    if (!taskPositions.value[task.id]) {
-      getDefaultPosition(task)
+    // 获取任务信息用于确认对话框
+    const fromTask = props.tasks.find(t => t.id === connection.from_task_id)
+    const toTask = props.tasks.find(t => t.id === connection.to_task_id)
+    
+    if (!fromTask || !toTask) {
+      ElMessage.error('无法找到相关任务')
+      return
     }
-  })
-  
-  // Update canvas size after initializing positions
-  nextTick(() => {
-    updateCanvasSize()
-  })
-}
 
-// Canvas click handler (deselect task)
-function handleCanvasClick(event: MouseEvent) {
-  // Only deselect if clicking on the canvas itself, not on a task
-  if (event.target === canvasContainer.value) {
-    emit('selectTask', null)
+    // 显示确认对话框
+    await ElMessageBox.confirm(
+      `确定要删除从「${fromTask.title}」到「${toTask.title}」的连接吗？`,
+      '删除连接',
+      {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      }
+    )
+
+    // 用户确认后，调用删除API
+    await taskStore.deleteDependency(connection.from_task_id, connection.to_task_id)
+    
+    ElMessage.success('连接已删除')
+    
+  } catch (error: any) {
+    if (error !== 'cancel') { // 用户取消操作不显示错误
+      console.error('删除连接失败:', error)
+      ElMessage.error('删除连接失败')
+    }
   }
 }
+
+// ResizeObserver设置
+function setupDimensionObserver() {
+  return positions.setupDimensionObserver()
+}
+
+// handleCanvasMouseDown 已被统一拖动系统替代
+/*
+function handleCanvasMouseDown(event: MouseEvent) {
+  // --- 1. 中键拖动 (最高优先级) ---
+  if (event.button === 1) {
+    console.log('🚀 [Refactor] 中键按下，立即开始画布平移。')
+    event.preventDefault()
+    event.stopPropagation()
+    panZoom.startPan(event)
+    return // 确保不执行任何其他逻辑
+  }
+
+  const target = event.target as HTMLElement
+  const isTaskClick = target.closest('.task-wrapper')
+
+  // --- 2. 左键点击任务 (由任务自身处理) ---
+  if (event.button === 0 && isTaskClick) {
+    console.log('🖱️ [Refactor] 左键点击任务，由 TaskCard 处理。')
+    return // 不处理，让 handleTaskMouseDown 生效
+  }
+
+  // --- 3. 左键点击画布背景 (拖动或取消选择) ---
+  if (event.button === 0 && !isTaskClick) {
+    console.log('🖱️ [Refactor] 左键在画布背景按下，准备拖动或取消选择。')
+    event.preventDefault()
+    
+    // 记录点击状态
+    canvasClickState.value = {
+      isDown: true,
+      startX: event.clientX,
+      startY: event.clientY,
+      isDragging: false
+    }
+
+    // 开始画布平移，PanZoom composable 会处理拖动逻辑
+    panZoom.startPan(event)
+  }
+}
+*/
+
+// 以下函数已被统一拖动系统替代
+/*
+function handleWindowMouseUp(event: MouseEvent) {
+  if (canvasClickState.value.isDown && event.button === 0) {
+    // 如果没有拖动（或拖动距离很小），则视为单击
+    if (!canvasClickState.value.isDragging) {
+      console.log('🎯 [Refactor] 检测到画布单击，取消选择任务。')
+      emit('selectTask', null)
+    } else {
+      console.log('💨 [Refactor] 画布拖动结束。')
+    }
+    // 重置状态
+    canvasClickState.value.isDown = false
+    canvasClickState.value.isDragging = false
+  }
+}
+
+// 新增：处理全局 mousemove 事件
+function handleWindowMouseMove(event: MouseEvent) {
+  if (canvasClickState.value.isDown && !canvasClickState.value.isDragging) {
+    const dx = event.clientX - canvasClickState.value.startX
+    const dy = event.clientY - canvasClickState.value.startY
+    // 如果移动超过5像素，则标记为拖动状态
+    if (Math.sqrt(dx * dx + dy * dy) > 5) {
+      console.log('💨 [Refactor] 开始拖动画布。')
+      canvasClickState.value.isDragging = true
+    }
+  }
+}
+*/
+
+// ResizeObserver instance
+let dimensionObserver: ResizeObserver | null = null
 
 onMounted(() => {
-  if (canvasContainer.value) {
-    canvasContainer.value.addEventListener('click', handleCanvasClick)
-  }
+  // 原有的mousedown监听器已经被统一拖动系统替代
+  console.log('✅ [Refactor] 统一拖动系统已接管事件处理。')
   
+  // 全局监听器已由统一拖动系统处理
+  // window.addEventListener('mouseup', handleWindowMouseUp)
+  // window.addEventListener('mousemove', handleWindowMouseMove)
+
   // Initialize positions for any existing tasks
   nextTick(() => {
-    initializeTaskPositions()
-    updateCanvasSize()
+    positions.initializeTaskPositions()
+    
+    // Setup dimension monitoring
+    dimensionObserver = setupDimensionObserver() || null
+  })
+
+  // 超级预热系统
+  nextTick(() => {
+    console.log('🚀 开始预热高性能系统...')
+    
+    // 初始化统一拖动系统
+    unifiedDrag.init(toRef(props, 'tasks'))
+    
+    // 预热画布平移缩放系统
+    panZoom.warmup()
+    
+    // 移除虚拟化系统预热
+    
+    // 预热GPU层
+    setTimeout(() => {
+      const canvasContent = canvasContainer.value?.querySelector('.canvas-content') as HTMLElement
+      if (canvasContent) {
+        // 强制创建GPU合成层
+        canvasContent.style.willChange = 'transform'
+        canvasContent.style.transform = 'translate3d(0,0,0)'
+        
+        // 预热任务卡片的GPU层
+        props.tasks.forEach(task => {
+          const taskElement = document.querySelector(`[data-task-id="${task.id}"]`) as HTMLElement
+          if (taskElement) {
+            taskElement.style.willChange = 'transform'
+            taskElement.style.transform = 'translate3d(0,0,0)'
+            
+            // 延迟恢复正常状态
+            setTimeout(() => {
+              if (!unifiedDrag.isTaskDragging()) {
+                taskElement.style.willChange = 'auto'
+              }
+            }, 100)
+          }
+        })
+        
+        console.log('🎉 高性能拖动系统预热完成！')
+        console.log(`📊 任务状态: 总任务 ${props.tasks.length}, 全部渲染`)
+      }
+    }, 100)
   })
 })
 
-// Update canvas size based on container and task positions
-function updateCanvasSize() {
-  if (!canvasContainer.value) return
-  
-  const containerRect = canvasContainer.value.getBoundingClientRect()
-  let maxX = containerRect.width
-  let maxY = containerRect.height
-  
-  // 计算所有任务的边界
-  Object.values(taskPositions.value).forEach(position => {
-    maxX = Math.max(maxX, position.x + cardDimensions.width + 100)
-    maxY = Math.max(maxY, position.y + cardDimensions.height + 100)
-  })
-  
-  canvasSize.value = {
-    width: Math.max(containerRect.width * 2, maxX),
-    height: Math.max(containerRect.height * 2, maxY)
+// Cleanup on unmount
+onUnmounted(() => {
+  if (dimensionObserver) {
+    dimensionObserver.disconnect()
   }
-}
+  
+  // 统一拖动系统将在destroy中清理自己的监听器
+  console.log('🔧 [Refactor] 事件清理交由统一拖动系统处理。')
+  
+  // 全局监听器清理已由统一拖动系统处理
+  // window.removeEventListener('mouseup', handleWindowMouseUp)
+  // window.removeEventListener('mousemove', handleWindowMouseMove)
+
+  // Cleanup统一拖动系统
+  unifiedDrag.destroy()
+  connections.cleanup()
+  panZoom.cleanup()
+})
 
 // Re-initialize positions when tasks change
 function updateTaskPositions() {
   nextTick(() => {
-    initializeTaskPositions()
+    positions.initializeTaskPositions()
   })
 }
 
@@ -588,7 +609,7 @@ function triggerAutoArrange() {
     animateToPositions(newPositions)
   } else {
     // 直接设置新位置
-    taskPositions.value = newPositions
+    positions.setTaskPositions(newPositions)
   }
   
   emit('autoArrangeComplete')
@@ -597,7 +618,7 @@ function triggerAutoArrange() {
 function animateToPositions(newPositions: { [key: number]: { x: number; y: number } }) {
   const duration = 500 // 动画持续时间
   const startTime = performance.now()
-  const startPositions = { ...taskPositions.value }
+  const startPositions = { ...positions.taskPositions.value }
   
   function animate(currentTime: number) {
     const elapsed = currentTime - startTime
@@ -609,16 +630,19 @@ function animateToPositions(newPositions: { [key: number]: { x: number; y: numbe
       : 1 - Math.pow(-2 * progress + 2, 3) / 2
     
     // 插值计算当前位置
+    const currentPositions: { [key: number]: { x: number; y: number } } = {}
     Object.keys(newPositions).forEach(taskIdStr => {
       const taskId = parseInt(taskIdStr)
       const startPos = startPositions[taskId] || { x: 0, y: 0 }
       const endPos = newPositions[taskId]
       
-      taskPositions.value[taskId] = {
+      currentPositions[taskId] = {
         x: startPos.x + (endPos.x - startPos.x) * easeProgress,
         y: startPos.y + (endPos.y - startPos.y) * easeProgress
       }
     })
+    
+    positions.setTaskPositions(currentPositions)
     
     if (progress < 1) {
       requestAnimationFrame(animate)
@@ -632,6 +656,22 @@ function animateToPositions(newPositions: { [key: number]: { x: number; y: numbe
 const islandView = ref(false)
 const islands = ref<any[]>([])
 
+// Sync island view with props
+watch(() => props.islandViewEnabled, (enabled) => {
+  if (enabled !== undefined) {
+    islandView.value = enabled
+  }
+}, { immediate: true })
+
+watch(() => props.themeIslands, (newIslands) => {
+  if (newIslands) {
+    islands.value = newIslands
+    if (newIslands.length > 0 && props.islandViewEnabled) {
+      arrangeTasksInIslands()
+    }
+  }
+}, { immediate: true })
+
 function applyIslandLayout(islandData: any[]) {
   console.log('Applying island layout:', islandData)
   islandView.value = true
@@ -644,34 +684,50 @@ function applyIslandLayout(islandData: any[]) {
 function arrangeTasksInIslands() {
   if (!canvasContainer.value || islands.value.length === 0) return
   
-  const containerRect = canvasContainer.value.getBoundingClientRect()
-  const containerWidth = containerRect.width
-  const containerHeight = containerRect.height
-  
-  // Calculate grid layout for islands
-  const islandsCount = islands.value.length
-  const cols = Math.ceil(Math.sqrt(islandsCount))
-  const rows = Math.ceil(islandsCount / cols)
-  
-  const islandWidth = containerWidth / cols
-  const islandHeight = containerHeight / rows
-  const padding = 20
-  
-  islands.value.forEach((island, index) => {
-    const row = Math.floor(index / cols)
-    const col = index % cols
+  // 使用requestAnimationFrame来优化性能
+  requestAnimationFrame(() => {
+    const containerRect = canvasContainer.value!.getBoundingClientRect()
+    const containerWidth = containerRect.width
+    const containerHeight = containerRect.height
     
-    const islandX = col * islandWidth + padding
-    const islandY = row * islandHeight + padding
-    const availableWidth = islandWidth - 2 * padding
-    const availableHeight = islandHeight - 2 * padding
+    // Calculate grid layout for islands
+    const islandsCount = islands.value.length
+    const cols = Math.ceil(Math.sqrt(islandsCount))
+    const rows = Math.ceil(islandsCount / cols)
     
-    // Arrange tasks within this island
-    arrangeTasksInIsland(island.tasks, islandX, islandY, availableWidth, availableHeight)
+    const islandWidth = containerWidth / cols
+    const islandHeight = containerHeight / rows
+    const padding = 20
+    
+    // 批量计算所有位置，避免频繁的DOM操作
+    const newPositions: { [key: number]: { x: number; y: number } } = {}
+    
+    islands.value.forEach((island, index) => {
+      const row = Math.floor(index / cols)
+      const col = index % cols
+      
+      const islandX = col * islandWidth + padding
+      const islandY = row * islandHeight + padding
+      const availableWidth = islandWidth - 2 * padding
+      const availableHeight = islandHeight - 2 * padding
+      
+      // Arrange tasks within this island
+      arrangeTasksInIsland(island.tasks, islandX, islandY, availableWidth, availableHeight, newPositions)
+    })
+    
+    // 批量更新位置
+    Object.assign(positions.taskPositions.value, newPositions)
   })
 }
 
-function arrangeTasksInIsland(tasks: any[], startX: number, startY: number, width: number, height: number) {
+function arrangeTasksInIsland(
+  tasks: any[], 
+  startX: number, 
+  startY: number, 
+  width: number, 
+  height: number, 
+  newPositions?: { [key: number]: { x: number; y: number } }
+) {
   if (!tasks || tasks.length === 0) return
   
   const taskWidth = 200
@@ -687,15 +743,19 @@ function arrangeTasksInIsland(tasks: any[], startX: number, startY: number, widt
     const x = startX + col * (taskWidth + spacing)
     const y = startY + row * (taskHeight + spacing) + 30 // Reserve space for island header
     
-    taskPositions.value[task.id] = { x, y }
+    if (newPositions) {
+      newPositions[task.id] = { x, y }
+    } else {
+      positions.taskPositions.value[task.id] = { x, y }
+    }
   })
 }
 
 function focusOnTask(taskId: number) {
   // Find the task and center the view on it
   const task = props.tasks.find(t => t.id === taskId)
-  if (task && taskPositions.value[taskId]) {
-    const position = taskPositions.value[taskId]
+  if (task && positions.taskPositions.value[taskId]) {
+    const position = positions.taskPositions.value[taskId]
     
     // 计算容器中心点
     if (canvasContainer.value) {
@@ -704,8 +764,8 @@ function focusOnTask(taskId: number) {
       const centerY = containerRect.height / 2
       
       // 将任务定位到画布中心
-      viewport.value.x = centerX - (position.x * viewport.value.scale) - 100 // 100是任务卡片宽度的一半
-      viewport.value.y = centerY - (position.y * viewport.value.scale) - 60  // 60是任务卡片高度的一半
+      panZoom.viewport.value.x = centerX - (position.x * panZoom.viewport.value.scale) - 100 // 100是任务卡片宽度的一半
+      panZoom.viewport.value.y = centerY - (position.y * panZoom.viewport.value.scale) - 60  // 60是任务卡片高度的一半
     }
     
     // 添加高亮效果
@@ -743,7 +803,7 @@ function exitIslandView() {
   islandView.value = false
   islands.value = []
   // Return to normal layout
-  initializeTaskPositions()
+  positions.initializeTaskPositions()
 }
 
 function getIslandHeaderStyle(island: any, index: number) {
@@ -768,7 +828,7 @@ function getIslandHeaderStyle(island: any, index: number) {
   const islandY = row * islandHeight + padding
   
   return {
-    position: 'absolute',
+    position: 'absolute' as const,
     left: `${islandX}px`,
     top: `${islandY}px`,
     width: `${islandWidth - 2 * padding}px`,
@@ -777,7 +837,7 @@ function getIslandHeaderStyle(island: any, index: number) {
   }
 }
 
-function toggleIsland(island: any) {
+function handleToggleIsland(island: any) {
   island.collapsed = !island.collapsed
   
   // Hide/show tasks in this island
@@ -793,278 +853,86 @@ function toggleIsland(island: any) {
   })
 }
 
-function highlightTargetIsland(clientX: number, clientY: number) {
-  const targetIsland = findTargetIsland(clientX, clientY)
-  
-  // Clear previous highlights
-  clearIslandHighlights()
-  
-  // Highlight target island
-  if (targetIsland) {
-    const islandIndex = islands.value.findIndex(island => island.id === targetIsland.id)
-    if (islandIndex !== -1) {
-      const headerElement = document.querySelector(`.island-header:nth-child(${islandIndex + 1})`) as HTMLElement
-      if (headerElement) {
-        headerElement.style.opacity = '1'
-        headerElement.style.transform = 'translateY(-2px) scale(1.05)'
-        headerElement.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.3)'
-      }
-    }
-  }
-}
-
-function findTargetIsland(clientX: number, clientY: number) {
-  if (!canvasContainer.value) return null
-  
-  const containerRect = canvasContainer.value.getBoundingClientRect()
-  const relativeX = clientX - containerRect.left
-  const relativeY = clientY - containerRect.top
-  
-  const containerWidth = containerRect.width
-  const containerHeight = containerRect.height
-  
-  const islandsCount = islands.value.length
-  const cols = Math.ceil(Math.sqrt(islandsCount))
-  const rows = Math.ceil(islandsCount / cols)
-  
-  const islandWidth = containerWidth / cols
-  const islandHeight = containerHeight / rows
-  const padding = 20
-  
-  for (let index = 0; index < islands.value.length; index++) {
-    const row = Math.floor(index / cols)
-    const col = index % cols
-    
-    const islandX = col * islandWidth + padding
-    const islandY = row * islandHeight + padding
-    const islandRight = islandX + islandWidth - 2 * padding
-    const islandBottom = islandY + islandHeight - 2 * padding
-    
-    if (relativeX >= islandX && relativeX <= islandRight &&
-        relativeY >= islandY && relativeY <= islandBottom) {
-      return islands.value[index]
-    }
-  }
-  
-  return null
-}
-
-function clearIslandHighlights() {
-  const headers = document.querySelectorAll('.island-header')
-  headers.forEach(header => {
-    const element = header as HTMLElement
-    element.style.opacity = ''
-    element.style.transform = ''
-    element.style.boxShadow = ''
-  })
-}
-
-async function handleTaskIslandChange(task: any, targetIsland: any) {
-  try {
-    // Call backend API to update task island
-    const response = await fetch(`/api/tasks/${task.id}/island?island_id=${targetIsland.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-    
-    if (response.ok) {
-      // Update local island data
-      // Remove task from old island
-      islands.value.forEach(island => {
-        island.tasks = island.tasks.filter((t: any) => t.id !== task.id)
-      })
-      
-      // Add task to new island
-      targetIsland.tasks.push(task)
-      
-      console.log(`Task ${task.title} moved to island ${targetIsland.name}`)
-    } else {
-      console.error('Failed to update task island')
-    }
-  } catch (error) {
-    console.error('Error updating task island:', error)
-  }
+function handleArrangeTasksInIslands() {
+  arrangeTasksInIslands()
 }
 
 function handleViewportMove(x: number, y: number) {
   // Update viewport position for infinite canvas
-  viewport.value.x = -x * viewport.value.scale
-  viewport.value.y = -y * viewport.value.scale
+  panZoom.viewport.value.x = -x * panZoom.viewport.value.scale
+  panZoom.viewport.value.y = -y * panZoom.viewport.value.scale
 }
 
 // Connection mode functions
 function enterConnectionMode(fromTaskId: number) {
-  connectionState.value = {
-    isConnecting: true,
-    fromTaskId,
-    startX: 0,
-    startY: 0
-  }
-  
-  // Add visual feedback
-  const fromElement = document.querySelector(`[data-task-id="${fromTaskId}"]`)
-  if (fromElement) {
-    fromElement.classList.add('connection-source')
-  }
-  
-  // Add cursor style to canvas
-  if (canvasContainer.value) {
-    canvasContainer.value.style.cursor = 'crosshair'
-  }
-  
-  // Add click listener to all task elements for connection target
-  document.addEventListener('click', handleConnectionTargetClick)
+  connections.enterConnectionMode(fromTaskId)
 }
 
 function handleConnectionTargetClick(event: MouseEvent) {
-  if (!connectionState.value.isConnecting) return
-  
-  const targetElement = event.target as HTMLElement
-  const taskElement = targetElement.closest('[data-task-id]') as HTMLElement
-  
-  if (taskElement) {
-    const toTaskId = parseInt(taskElement.dataset.taskId || '0')
-    if (toTaskId && toTaskId !== connectionState.value.fromTaskId) {
-      // Create dependency
-      createTaskDependency(connectionState.value.fromTaskId!, toTaskId)
-      exitConnectionMode()
-    }
-  } else {
-    // Clicked outside tasks, exit connection mode
-    exitConnectionMode()
-  }
+  // This is handled by the connections composable
 }
 
 function exitConnectionMode() {
-  // Remove visual feedback
-  const sourceElement = document.querySelector('.connection-source')
-  if (sourceElement) {
-    sourceElement.classList.remove('connection-source')
-  }
-  
-  // Reset cursor
-  if (canvasContainer.value) {
-    canvasContainer.value.style.cursor = 'default'
-  }
-  
-  // Reset connection state
-  connectionState.value = {
-    isConnecting: false,
-    fromTaskId: null,
-    startX: 0,
-    startY: 0
-  }
-  connectionPreview.value = null
-  
-  // Remove event listeners
-  document.removeEventListener('click', handleConnectionTargetClick)
+  connections.exitConnectionMode()
 }
 
-// Canvas pan and zoom functions
-function handleCanvasMouseDown(event: MouseEvent) {
-  // Only handle middle mouse button (button 1) for panning
+// handleCanvasAuxClick 已被统一拖动系统替代
+/*
+function handleCanvasAuxClick(event: MouseEvent) {
+  console.log('🎯 辅助点击事件:', event.button)
+  
+  // 阻止中键的默认行为（如打开新标签页等）
   if (event.button === 1) {
+    console.log('🚫 阻止中键默认行为')
     event.preventDefault()
-    startPanning(event)
+    event.stopPropagation()
   }
 }
+*/
 
-function startPanning(event: MouseEvent) {
-  panState.value = {
-    isPanning: true,
-    startX: event.clientX,
-    startY: event.clientY,
-    startViewportX: viewport.value.x,
-    startViewportY: viewport.value.y
-  }
-  
-  document.addEventListener('mousemove', handlePanDrag)
-  document.addEventListener('mouseup', handlePanEnd)
-  
-  // Change cursor
-  if (canvasContainer.value) {
-    canvasContainer.value.style.cursor = 'grabbing'
-  }
-}
-
-function handlePanDrag(event: MouseEvent) {
-  if (!panState.value.isPanning) return
-  
-  const deltaX = event.clientX - panState.value.startX
-  const deltaY = event.clientY - panState.value.startY
-  
-  viewport.value.x = panState.value.startViewportX + deltaX
-  viewport.value.y = panState.value.startViewportY + deltaY
-}
-
-function handlePanEnd() {
-  panState.value.isPanning = false
-  
-  document.removeEventListener('mousemove', handlePanDrag)
-  document.removeEventListener('mouseup', handlePanEnd)
-  
-  // Reset cursor
-  if (canvasContainer.value) {
-    canvasContainer.value.style.cursor = 'grab'
-  }
-}
-
+// 处理滚轮事件
 function handleCanvasWheel(event: WheelEvent) {
-  // Only zoom with Ctrl key pressed
-  if (!event.ctrlKey) return
+  console.log('🎯 滚轮事件触发')
+  panZoom.handleWheel(event)
+}
+
+// 处理画布点击事件
+function handleCanvasClick(event: MouseEvent) {
+  const target = event.target as HTMLElement
+  const isClickOnTask = target.closest('.task-wrapper') || 
+                       target.closest('.task-node')
   
-  event.preventDefault()
-  
-  // 使用比例缩放而不是固定步长，确保一致的缩放体验
-  const scaleFactor = 1.05  // 每次缩放5%
-  const direction = event.deltaY > 0 ? -1 : 1  // 滚轮方向
-  
-  // 计算新的缩放比例
-  const newScale = direction > 0 
-    ? Math.min(viewport.value.maxScale, viewport.value.scale * scaleFactor)
-    : Math.max(viewport.value.minScale, viewport.value.scale / scaleFactor)
-  
-  if (newScale !== viewport.value.scale) {
-    // Get mouse position relative to canvas
-    const rect = canvasContainer.value?.getBoundingClientRect()
-    if (!rect) return
-    
-    const mouseX = event.clientX - rect.left
-    const mouseY = event.clientY - rect.top
-    
-    // Calculate zoom point in canvas space
-    const canvasX = (mouseX - viewport.value.x) / viewport.value.scale
-    const canvasY = (mouseY - viewport.value.y) / viewport.value.scale
-    
-    // Update scale
-    viewport.value.scale = newScale
-    
-    // Adjust position to zoom towards mouse cursor
-    viewport.value.x = mouseX - canvasX * viewport.value.scale
-    viewport.value.y = mouseY - canvasY * viewport.value.scale
+  // 如果点击的不是任务，取消选择
+  if (!isClickOnTask) {
+    emit('selectTask', null)
   }
 }
 
-// Center viewport on canvas
-function centerViewport() {
-  if (!canvasContainer.value) return
-  
-  const containerRect = canvasContainer.value.getBoundingClientRect()
-  viewport.value.x = (containerRect.width - canvasSize.value.width * viewport.value.scale) / 2
-  viewport.value.y = (containerRect.height - canvasSize.value.height * viewport.value.scale) / 2
+// 🔧 修复15: 添加TaskCard专用事件处理函数
+function handleTaskCardClick(task: Task, event: MouseEvent) {
+  console.log('🎯 [StickyCanvas] TaskCard点击事件:', task.title)
+  event.stopPropagation()
+  selectTask(task)
 }
 
-// Reset zoom to 100%
-function resetZoom() {
-  viewport.value.scale = 1
-  centerViewport()
+function handleTaskCardDoubleClick(task: Task, event: MouseEvent) {
+  console.log('✏️ [StickyCanvas] TaskCard双击事件:', task.title)
+  event.stopPropagation()
+  // 双击事件由TaskCard内部处理
+}
+
+function handleTaskCardMouseDown(task: Task, event: MouseEvent) {
+  console.log('🖱️ [StickyCanvas] TaskCard鼠标按下:', task.title, 'button:', event.button)
+  event.stopPropagation()
+  // 鼠标按下事件由TaskCard和统一拖拽系统处理
 }
 
 // Initialize viewport on mount
 onMounted(() => {
   centerViewport()
+})
+
+onUnmounted(() => {
 })
 
 // Expose functions
@@ -1080,67 +948,145 @@ defineExpose({
 })
 
 // Note: Watch for tasks is already handled above in the debug section
+
+// 居中视口函数
+function centerViewport() {
+  if (!canvasContainer.value) return
+  
+  const containerRect = canvasContainer.value.getBoundingClientRect()
+  panZoom.viewport.value.x = (containerRect.width - canvasSize.value.width * panZoom.viewport.value.scale) / 2
+  panZoom.viewport.value.y = (containerRect.height - canvasSize.value.height * panZoom.viewport.value.scale) / 2
+}
+
+// 重置缩放函数
+function resetZoom() {
+  panZoom.viewport.value.scale = 1
+  centerViewport()
+}
+
+// 任务位置更新优化
+async function updateTaskPosition(taskId: number, x: number, y: number) {
+  try {
+    await taskStore.updateTask(taskId, {
+      position_x: x,
+      position_y: y
+    })
+  } catch (error) {
+    console.error('Failed to update task position:', error)
+    // 回滚位置
+    const task = props.tasks.find(t => t.id === taskId)
+    if (task) {
+      positions.taskPositions.value[taskId] = {
+        x: task.position_x || 0,
+        y: task.position_y || 0
+      }
+    }
+  }
+}
+
+// 任务尺寸更新处理
+function handleTaskDimensionsUpdate(taskId: number, dimensions: { width: number; height: number }) {
+  taskDimensions.value[taskId] = dimensions
+}
+
+// 监听任务变化
+watch(() => props.tasks, (newTasks) => {
+  console.log('📌 [StickyCanvas] 任务列表变化，共', newTasks.length, '个任务')
+}, { immediate: true })
 </script>
 
 <style scoped>
+/* Modern Sticky Canvas - Enhanced Design */
 .sticky-canvas {
   position: relative;
   width: 100%;
   height: 100%;
-  background: var(--bg-base);
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   overflow: hidden;
   cursor: grab;
-  color: var(--text-primary);
-  user-select: none; /* Prevent text selection during pan */
-}
-
-.sticky-canvas.panning {
-  cursor: grabbing;
+  user-select: none;
+  /* 移除过渡效果，提升性能 */
 }
 
 .sticky-canvas:active {
   cursor: grabbing;
 }
 
+.sticky-canvas.dragging {
+  cursor: grabbing;
+}
+
+.sticky-canvas.panning {
+  cursor: grabbing;
+}
+
+/* 超高性能画布内容 */
 .canvas-content {
   position: relative;
-  pointer-events: none; /* Allow clicks to pass through to child elements */
+  width: 100%;
+  height: 100%;
+  transform-origin: 0 0;
+  /* GPU加速配置 */
+  will-change: transform;
+  /* 移除 contain: strict，使用更温和的设置 */
+  contain: layout style; /* 包含布局和样式，但不包含绘制 */
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
+  isolation: isolate;
+  /* 强制硬件加速 */
+  transform: translateZ(0);
 }
 
-.canvas-content > * {
-  pointer-events: auto; /* Restore pointer events for child elements */
+/* 高性能状态优化 */
+.panning .canvas-content {
+  transition: none !important;
+  will-change: transform;
 }
 
+.panning .task-wrapper {
+  transition: none !important;
+  will-change: transform;
+}
+
+.dragging .task-wrapper {
+  transition: none !important;
+  will-change: transform;
+  z-index: 1000; /* 拖拽时置顶 */
+}
+
+/* 任务拖拽时的性能优化 */
+.task-wrapper.dragging {
+  /* 移除 contain: strict */
+  contain: layout;
+  will-change: transform;
+  z-index: 1000;
+  /* 禁用所有动画和过渡 */
+  animation: none !important;
+  transition: none !important;
+  /* 确保拖拽时也不会有溢出问题 */
+  overflow: visible;
+}
+
+/* Modern Canvas Grid */
 .canvas-grid {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  opacity: 0.08;
-  background-image: 
-    linear-gradient(var(--grid-line, var(--border-subtle)) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line, var(--border-subtle)) 1px, transparent 1px);
-  background-size: 50px 50px;
-  background-position: 0 0;
-  pointer-events: none;
+  opacity: 0.4;
   z-index: 0;
-  transition: opacity 0.3s ease;
-}
-
-.sticky-canvas:hover .canvas-grid {
-  opacity: 0.15;
-}
-
-/* Enhanced grid for drag operations */
-.sticky-canvas.dragging .canvas-grid {
-  opacity: 0.25;
+  pointer-events: none;
+  background-size: 40px 40px;
   background-image: 
-    linear-gradient(var(--primary) 1px, transparent 1px),
-    linear-gradient(90deg, var(--primary) 1px, transparent 1px);
+    linear-gradient(rgba(102, 126, 234, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(102, 126, 234, 0.1) 1px, transparent 1px);
+  background-position: 0 0, 0 0;
+  /* 移除过渡效果 */
 }
 
-/* Grid dots for modern feel */
+/* Enhanced grid dots for modern feel - 简化动画 */
 .canvas-grid::after {
   content: '';
   position: absolute;
@@ -1148,72 +1094,77 @@ defineExpose({
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: radial-gradient(circle, var(--text-muted) 1px, transparent 1px);
-  background-size: 32px 32px;
-  opacity: 0.1;
+  background-image: radial-gradient(circle, rgba(102, 126, 234, 0.15) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.6;
+  /* 移除动画，提升性能 */
 }
 
-
-.task-wrapper:active {
-  cursor: grabbing;
-}
-
-.task-wrapper:hover:not(.dragging) {
-  z-index: 10;
-  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.15));
-  transform: translate3d(0, -2px, 0) scale(1.01);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Smooth transitions when not dragging */
-.task-wrapper:not(.dragging) {
-  transition: left 0.15s cubic-bezier(0.4, 0, 0.2, 1), top 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Hardware acceleration for dragging */
-.task-wrapper.dragging {
-  will-change: transform, left, top;
-  transition: none;
-  transform: translate3d(0, 0, 0) scale(1.02) !important;
-  z-index: 1001;
-  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.25));
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-}
-
-/* Optimize all task wrappers */
+/* 超高性能任务包装器 */
 .task-wrapper {
   position: absolute;
   cursor: grab;
   user-select: none;
   z-index: 1;
-  contain: layout style paint;
+  /* 🔧 修复: 防止任务意外覆盖其他任务 */
+  contain: layout; /* 只包含布局，不包含样式和绘制 */
   transform: translate3d(0, 0, 0);
-  animation: fadeIn 0.4s ease-out;
+  /* 简化进入动画 */
+  animation: taskFadeIn 0.3s ease-out;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  will-change: auto;
+  /* GPU层优化 */
+  isolation: isolate;
+  transform-style: preserve-3d;
+  /* 🔧 修复: 确保任务包装器不会意外扩展 */
+  overflow: visible; /* 确保子元素可以正常显示 */
+  /* 🔧 修复: 基于任务ID设置不同的z-index，避免重叠问题 */
+  z-index: calc(1 + var(--task-order, 0));
 }
 
-@keyframes fadeIn {
+@keyframes taskFadeIn {
   from {
     opacity: 0;
-    transform: translate3d(0, 20px, 0) scale(0.95);
+    transform: translate3d(0, 10px, 0);
   }
   to {
     opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1);
+    transform: translate3d(0, 0, 0);
   }
 }
 
-/* Prevent text selection during drag */
-.sticky-canvas * {
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
+.task-wrapper:active {
+  cursor: grabbing;
 }
 
-/* Island Headers */
+/* 减少hover效果的复杂度 */
+.task-wrapper:hover:not(.dragging) {
+  z-index: 10;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.1));
+  transform: translate3d(0, -2px, 0);
+  transition: all 0.2s ease-out;
+}
+
+/* Smooth transitions when not dragging */
+.task-wrapper:not(.dragging) {
+  transition: 
+    transform 0.2s ease-out,
+    filter 0.2s ease-out;
+}
+
+/* Hardware acceleration for dragging */
+.task-wrapper.dragging {
+  will-change: transform;
+  transition: none !important;
+  z-index: 1001;
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.2));
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  /* 不要覆盖transform，让JS动态设置的位置生效 */
+}
+
+/* Enhanced Island Headers */
 .island-headers {
   position: absolute;
   top: 0;
@@ -1225,25 +1176,28 @@ defineExpose({
 }
 
 .island-header {
-  background: var(--card-bg);
-  border: 2px solid var(--border-default);
-  border-radius: var(--radius-md);
-  padding: 12px 16px;
-  box-shadow: var(--shadow-md);
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid rgba(102, 126, 234, 0.3);
+  border-radius: 16px;
+  padding: 16px 20px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    0 4px 16px rgba(102, 126, 234, 0.1);
   cursor: pointer;
   pointer-events: auto;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  backdrop-filter: blur(8px);
-  max-height: 80px;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  backdrop-filter: blur(20px);
+  max-height: 120px;
   overflow: hidden;
-  color: var(--text-primary);
-  animation: slideInFromTop 0.5s ease-out;
+  color: #1a202c;
+  animation: islandSlideIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-bottom: 4px solid rgba(102, 126, 234, 0.6);
 }
 
-@keyframes slideInFromTop {
+@keyframes islandSlideIn {
   from {
     opacity: 0;
-    transform: translateY(-20px) scale(0.95);
+    transform: translateY(-30px) scale(0.9);
   }
   to {
     opacity: 1;
@@ -1252,83 +1206,130 @@ defineExpose({
 }
 
 .island-header:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: var(--shadow-xl), 0 0 20px var(--primary-light);
-  border-color: var(--primary);
-  background: var(--card-hover);
+  transform: translateY(-6px) scale(1.03);
+  box-shadow: 
+    0 16px 48px rgba(0, 0, 0, 0.15), 
+    0 8px 24px rgba(102, 126, 234, 0.2);
+  border-color: rgba(102, 126, 234, 0.6);
+  background: rgba(255, 255, 255, 0.98);
+  border-bottom-color: rgba(102, 126, 234, 0.8);
 }
 
 .island-header:active {
-  transform: translateY(-2px) scale(1.01);
-  transition: all 0.1s ease;
+  transform: translateY(-3px) scale(1.01);
+  transition: all 0.2s ease;
 }
 
 .island-header.collapsed {
-  opacity: 0.7;
+  opacity: 0.6;
+  transform: scale(0.95);
+  filter: grayscale(0.3);
 }
 
 .island-title {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-weight: 600;
-  font-size: 14px;
-  margin-bottom: 4px;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 8px;
+  color: #1a202c;
 }
 
 .island-icon {
-  font-size: 16px;
+  font-size: 20px;
+  animation: islandIconFloat 3s ease-in-out infinite;
+}
+
+@keyframes islandIconFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
 }
 
 .island-name {
-  color: var(--text-primary);
-  font-weight: var(--font-weight-semibold);
+  color: #1a202c;
+  font-weight: 700;
+  letter-spacing: -0.025em;
 }
 
 .island-count {
-  color: var(--text-secondary);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-normal);
+  color: rgba(107, 114, 128, 0.8);
+  font-size: 14px;
+  font-weight: 500;
+  background: rgba(102, 126, 234, 0.1);
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(102, 126, 234, 0.2);
 }
 
 .island-keywords {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   flex-wrap: wrap;
+  max-height: 60px;
+  overflow: hidden;
 }
 
 .keyword-tag {
-  background: var(--bg-elevated);
-  color: var(--text-secondary);
-  padding: 2px 6px;
-  border-radius: 10px;
-  font-size: 10px;
-  font-weight: var(--font-weight-normal);
-  border: 1px solid var(--border-subtle);
-  transition: all 0.2s ease;
-  animation: fadeIn 0.3s ease-out;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  color: rgba(102, 126, 234, 0.8);
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: keywordFadeIn 0.4s ease-out;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+@keyframes keywordFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .island-header:hover .keyword-tag {
-  background: var(--primary-light);
-  color: var(--primary);
-  transform: translateY(-1px);
-  border-color: var(--primary);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+  color: rgba(102, 126, 234, 1);
+  transform: translateY(-2px) scale(1.05);
+  border-color: rgba(102, 126, 234, 0.4);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
 }
 
-/* Connection Mode Styles */
+/* Enhanced Connection Mode Styles */
 :deep(.connection-source) {
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3), 0 0 20px rgba(37, 99, 235, 0.2);
-  border: 2px solid var(--primary);
-  animation: connection-pulse 1.5s ease-in-out infinite;
+  box-shadow: 
+    0 0 0 4px rgba(102, 126, 234, 0.3), 
+    0 0 20px rgba(102, 126, 234, 0.2),
+    0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 3px solid rgba(102, 126, 234, 0.8);
+  animation: connectionPulse 2s ease-in-out infinite;
+  transform: scale(1.05);
 }
 
-@keyframes connection-pulse {
+@keyframes connectionPulse {
   0%, 100% {
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3), 0 0 20px rgba(37, 99, 235, 0.2);
+    box-shadow: 
+      0 0 0 4px rgba(102, 126, 234, 0.3), 
+      0 0 20px rgba(102, 126, 234, 0.2),
+      0 8px 32px rgba(0, 0, 0, 0.1);
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.4), 0 0 30px rgba(37, 99, 235, 0.3);
+    box-shadow: 
+      0 0 0 8px rgba(102, 126, 234, 0.4), 
+      0 0 30px rgba(102, 126, 234, 0.3),
+      0 12px 48px rgba(0, 0, 0, 0.15);
   }
 }
 
@@ -1336,8 +1337,127 @@ defineExpose({
   cursor: crosshair !important;
 }
 
+.canvas-container.connection-mode .canvas-grid {
+  opacity: 0.6;
+}
+
 :deep(.task-card):hover.connection-target {
-  border: 2px solid var(--success);
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+  border: 3px solid rgba(16, 185, 129, 0.8);
+  box-shadow: 
+    0 0 0 3px rgba(16, 185, 129, 0.2),
+    0 8px 32px rgba(16, 185, 129, 0.1);
+  transform: scale(1.03);
+}
+
+
+/* Enhanced Performance Optimizations */
+.sticky-canvas,
+.canvas-content,
+.task-wrapper {
+  contain: layout style paint;
+}
+
+/* 画布平移性能优化 */
+.sticky-canvas.panning {
+  pointer-events: none; /* 平移时减少事件处理 */
+}
+
+.sticky-canvas.panning .canvas-content {
+  will-change: transform;
+  backface-visibility: hidden;
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+/* 平移时暂停任务卡片的hover效果以提高性能 */
+.sticky-canvas.panning .task-wrapper {
+  pointer-events: none;
+  will-change: auto; /* 平移时不需要单独的transform优化 */
+}
+
+.sticky-canvas.panning .task-wrapper:hover {
+  transform: none !important; /* 禁用hover效果 */
+  transition: none !important;
+}
+
+.task-wrapper {
+  will-change: transform, left, top;
+}
+
+.task-wrapper:hover {
+  will-change: transform, filter;
+}
+
+/* Enhanced Accessibility */
+.island-header:focus {
+  outline: 3px solid rgba(102, 126, 234, 0.6);
+  outline-offset: 2px;
+}
+
+
+/* Enhanced Responsive Design */
+@media (max-width: 768px) {
+  .island-header {
+    padding: 12px 16px;
+    max-height: 100px;
+  }
+  
+  .island-title {
+    font-size: 14px;
+  }
+  
+  .island-count {
+    font-size: 12px;
+  }
+  
+  .keyword-tag {
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+  
+}
+
+/* Enhanced Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .sticky-canvas {
+    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+  }
+  
+  .canvas-grid {
+    background-image: 
+      linear-gradient(rgba(102, 126, 234, 0.2) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(102, 126, 234, 0.2) 1px, transparent 1px);
+  }
+  
+  .canvas-grid::after {
+    background-image: radial-gradient(circle, rgba(102, 126, 234, 0.3) 1px, transparent 1px);
+  }
+  
+  .island-header {
+    background: rgba(31, 41, 55, 0.95);
+    border: 2px solid rgba(102, 126, 234, 0.4);
+    color: #f9fafb;
+  }
+  
+  .island-header:hover {
+    background: rgba(31, 41, 55, 0.98);
+    border-color: rgba(102, 126, 234, 0.6);
+  }
+  
+  .island-name {
+    color: #f9fafb;
+  }
+  
+  .island-count {
+    color: rgba(156, 163, 175, 0.8);
+    background: rgba(102, 126, 234, 0.2);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+  }
+  
+  .keyword-tag {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+    color: rgba(102, 126, 234, 0.9);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+  }
 }
 </style>

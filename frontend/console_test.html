@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskWall Console Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .info-section {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+        }
+        .error-section {
+            background: rgba(255, 0, 0, 0.1);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 4px solid #f44336;
+        }
+        .warning-section {
+            background: rgba(255, 193, 7, 0.1);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 4px solid #FFC107;
+        }
+        .log-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+        }
+        .timestamp {
+            color: #FFC107;
+            font-size: 0.9em;
+        }
+        .error { color: #f44336; }
+        .warning { color: #FFC107; }
+        .info { color: #4CAF50; }
+        .log { color: #2196F3; }
+        
+        .test-button {
+            background: linear-gradient(45deg, #FE6B8B 30%, #FF8E53 90%);
+            border: none;
+            border-radius: 25px;
+            color: white;
+            padding: 15px 30px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 5px 2px rgba(255, 105, 135, .3);
+        }
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 10px 4px rgba(255, 105, 135, .3);
+        }
+        
+        .iframe-container {
+            width: 100%;
+            height: 600px;
+            margin: 20px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        .status.loading {
+            background: rgba(33, 150, 243, 0.2);
+            border: 1px solid #2196F3;
+        }
+        .status.success {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4CAF50;
+        }
+        .status.error {
+            background: rgba(244, 67, 54, 0.2);
+            border: 1px solid #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 TaskWall 控制台检查工具</h1>
+        
+        <div class="controls">
+            <button class="test-button" onclick="loadTaskWall()">🚀 加载 TaskWall</button>
+            <button class="test-button" onclick="refreshIframe()">🔄 刷新</button>
+            <button class="test-button" onclick="clearLogs()">🧹 清空日志</button>
+            <button class="test-button" onclick="exportLogs()">📥 导出日志</button>
+        </div>
+        
+        <div id="status" class="status loading">准备就绪，点击加载TaskWall开始检查</div>
+        
+        <div class="info-section">
+            <h3>📊 检查统计</h3>
+            <p><strong>错误数量:</strong> <span id="errorCount">0</span></p>
+            <p><strong>警告数量:</strong> <span id="warningCount">0</span></p>
+            <p><strong>日志数量:</strong> <span id="logCount">0</span></p>
+            <p><strong>页面状态:</strong> <span id="pageStatus">未加载</span></p>
+        </div>
+        
+        <div class="iframe-container">
+            <iframe id="taskwallFrame" src="about:blank"></iframe>
+        </div>
+        
+        <div class="error-section">
+            <h3>❌ 错误日志</h3>
+            <div id="errorLogs">暂无错误</div>
+        </div>
+        
+        <div class="warning-section">
+            <h3>⚠️ 警告日志</h3>
+            <div id="warningLogs">暂无警告</div>
+        </div>
+        
+        <div class="info-section">
+            <h3>ℹ️ 信息日志</h3>
+            <div id="infoLogs">暂无信息</div>
+        </div>
+    </div>
+
+    <script>
+        let errors = [];
+        let warnings = [];
+        let logs = [];
+        let originalConsole = {};
+        
+        // 保存原始console方法
+        ['log', 'error', 'warn', 'info', 'debug'].forEach(method => {
+            originalConsole[method] = console[method];
+        });
+        
+        function logToDisplay(type, message, source = 'main') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logItem = {
+                timestamp,
+                type,
+                message: typeof message === 'object' ? JSON.stringify(message) : message,
+                source
+            };
+            
+            if (type === 'error') {
+                errors.push(logItem);
+            } else if (type === 'warn') {
+                warnings.push(logItem);
+            } else {
+                logs.push(logItem);
+            }
+            
+            updateDisplay();
+            updateCounts();
+            
+            // 调用原始console方法
+            originalConsole[type](message);
+        }
+        
+        // 劫持console方法
+        console.log = (message) => logToDisplay('log', message);
+        console.error = (message) => logToDisplay('error', message);
+        console.warn = (message) => logToDisplay('warn', message);
+        console.info = (message) => logToDisplay('info', message);
+        
+        function updateCounts() {
+            document.getElementById('errorCount').textContent = errors.length;
+            document.getElementById('warningCount').textContent = warnings.length;
+            document.getElementById('logCount').textContent = logs.length;
+        }
+        
+        function updateDisplay() {
+            displayLogs('errorLogs', errors, 'error');
+            displayLogs('warningLogs', warnings, 'warning');
+            displayLogs('infoLogs', logs, 'info');
+        }
+        
+        function displayLogs(containerId, logArray, className) {
+            const container = document.getElementById(containerId);
+            if (logArray.length === 0) {
+                container.innerHTML = `<p>暂无${className === 'error' ? '错误' : className === 'warning' ? '警告' : '信息'}</p>`;
+                return;
+            }
+            
+            container.innerHTML = logArray.map(log => `
+                <div class="log-item">
+                    <span class="timestamp">[${log.timestamp}]</span>
+                    <span class="${className}">[${log.type.toUpperCase()}]</span>
+                    <span class="${className}">[${log.source}]</span>
+                    <br>
+                    ${log.message}
+                </div>
+            `).join('');
+        }
+        
+        function setStatus(message, type = 'loading') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+        
+        function loadTaskWall() {
+            setStatus('正在加载 TaskWall...', 'loading');
+            const iframe = document.getElementById('taskwallFrame');
+            
+            iframe.onload = function() {
+                setStatus('TaskWall 加载完成', 'success');
+                document.getElementById('pageStatus').textContent = '已加载';
+                
+                // 尝试访问iframe内容（如果同域）
+                try {
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    
+                    // 检查Vue应用
+                    setTimeout(() => {
+                        const hasVueApp = iframeDoc.querySelector('#app') !== null;
+                        const hasTasks = iframeDoc.querySelector('.task-card') !== null;
+                        const hasCanvas = iframeDoc.querySelector('canvas') !== null;
+                        
+                        logToDisplay('info', `Vue应用存在: ${hasVueApp}`, 'iframe');
+                        logToDisplay('info', `任务卡片存在: ${hasTasks}`, 'iframe');
+                        logToDisplay('info', `画布存在: ${hasCanvas}`, 'iframe');
+                        
+                        // 检查页面标题
+                        if (iframeDoc.title) {
+                            logToDisplay('info', `页面标题: ${iframeDoc.title}`, 'iframe');
+                        }
+                        
+                        // 监听iframe内的错误
+                        iframe.contentWindow.addEventListener('error', function(e) {
+                            logToDisplay('error', `页面错误: ${e.message} at ${e.filename}:${e.lineno}:${e.colno}`, 'iframe');
+                        });
+                        
+                        iframe.contentWindow.addEventListener('unhandledrejection', function(e) {
+                            logToDisplay('error', `未处理的Promise拒绝: ${e.reason}`, 'iframe');
+                        });
+                        
+                    }, 2000);
+                    
+                } catch (e) {
+                    logToDisplay('warn', '无法访问iframe内容 (可能的跨域限制)', 'iframe');
+                }
+            };
+            
+            iframe.onerror = function() {
+                setStatus('TaskWall 加载失败', 'error');
+                document.getElementById('pageStatus').textContent = '加载失败';
+                logToDisplay('error', 'iframe加载失败', 'iframe');
+            };
+            
+            iframe.src = 'http://localhost:3000';
+        }
+        
+        function refreshIframe() {
+            const iframe = document.getElementById('taskwallFrame');
+            iframe.src = iframe.src;
+            logToDisplay('info', '刷新iframe', 'main');
+        }
+        
+        function clearLogs() {
+            errors = [];
+            warnings = [];
+            logs = [];
+            updateCounts();
+            updateDisplay();
+            logToDisplay('info', '日志已清空', 'main');
+        }
+        
+        function exportLogs() {
+            const allLogs = {
+                timestamp: new Date().toISOString(),
+                errors,
+                warnings,
+                logs,
+                summary: {
+                    errorCount: errors.length,
+                    warningCount: warnings.length,
+                    logCount: logs.length
+                }
+            };
+            
+            const blob = new Blob([JSON.stringify(allLogs, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `taskwall-console-logs-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            logToDisplay('info', '日志已导出', 'main');
+        }
+        
+        // 页面加载完成后的初始化
+        window.addEventListener('load', function() {
+            logToDisplay('info', '控制台检查工具已准备就绪', 'main');
+            setStatus('工具已准备就绪，点击加载TaskWall开始检查', 'success');
+        });
+        
+        // 监听全局错误
+        window.addEventListener('error', function(e) {
+            logToDisplay('error', `全局错误: ${e.message} at ${e.filename}:${e.lineno}:${e.colno}`, 'main');
+        });
+        
+        window.addEventListener('unhandledrejection', function(e) {
+            logToDisplay('error', `未处理的Promise拒绝: ${e.reason}`, 'main');
+        });
+    </script>
+</body>
+</html>

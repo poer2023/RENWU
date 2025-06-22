@@ -624,10 +624,11 @@ This week we worked on {len(tasks_data)} total tasks, with {len(completed_tasks)
     
     def _fallback_risk_analysis(self, tasks: List[Dict]) -> Dict:
         """
-        Fallback risk analysis using keyword detection and heuristics
+        Enhanced fallback risk analysis using advanced keyword detection and heuristics
         """
         import re
         from datetime import datetime, timedelta
+        from collections import defaultdict
         
         risky_tasks = []
         risk_summary = {
@@ -640,62 +641,168 @@ This week we worked on {len(tasks_data)} total tasks, with {len(completed_tasks)
                 "blocked": 0,
                 "external_dependency": 0,
                 "complexity": 0,
-                "emotional_stress": 0
+                "emotional_stress": 0,
+                "resource_conflict": 0,
+                "technical_debt": 0,
+                "communication": 0
+            },
+            "risk_trends": {},
+            "project_health_score": 0
+        }
+        
+        # Enhanced risk detection keywords with weights and negation handling
+        risk_keywords = {
+            "delay": {
+                "positive": ["延期", "推迟", "拖延", "延误", "滞后", "超期", "deadline", "late", "overdue", "behind", "慢", "赶不上"],
+                "negative": ["不延期", "按时", "提前", "on time", "ahead"],
+                "weight": 3
+            },
+            "blocked": {
+                "positive": ["卡住", "阻塞", "等待", "依赖", "blocked", "waiting", "stuck", "pending", "暂停", "无法进行"],
+                "negative": ["解除", "畅通", "继续", "unblocked", "proceeding"],
+                "weight": 4
+            },
+            "external_dependency": {
+                "positive": ["外部", "第三方", "依赖", "等待", "external", "third-party", "dependency", "vendor", "供应商"],
+                "negative": ["内部", "自主", "independent", "internal"],
+                "weight": 2
+            },
+            "complexity": {
+                "positive": ["复杂", "困难", "challenging", "complex", "difficult", "unclear", "uncertain", "不确定", "模糊"],
+                "negative": ["简单", "清晰", "明确", "simple", "clear", "straightforward"],
+                "weight": 2
+            },
+            "emotional_stress": {
+                "positive": ["压力", "紧急", "焦虑", "困扰", "stress", "urgent", "pressure", "worried", "confused", "疲惫", "加班"],
+                "negative": ["轻松", "从容", "calm", "relaxed", "confident"],
+                "weight": 3
+            },
+            "resource_conflict": {
+                "positive": ["资源不足", "人手不够", "冲突", "竞争", "resource", "conflict", "shortage", "缺少"],
+                "negative": ["资源充足", "人员到位", "sufficient", "adequate"],
+                "weight": 3
+            },
+            "technical_debt": {
+                "positive": ["技术债", "重构", "优化", "debt", "refactor", "legacy", "老代码", "维护困难"],
+                "negative": ["新架构", "现代化", "clean", "optimized"],
+                "weight": 2
+            },
+            "communication": {
+                "positive": ["沟通问题", "理解偏差", "需求不明", "miscommunication", "unclear", "confusion", "误解"],
+                "negative": ["沟通顺畅", "理解一致", "clear communication", "aligned"],
+                "weight": 2
             }
         }
         
-        # Risk detection keywords
-        risk_keywords = {
-            "delay": ["延期", "推迟", "拖延", "延误", "滞后", "超期", "deadline", "late", "overdue"],
-            "blocked": ["卡住", "阻塞", "等待", "依赖", "blocked", "waiting", "stuck", "pending"],
-            "external_dependency": ["外部", "第三方", "依赖", "等待", "external", "third-party", "dependency"],
-            "complexity": ["复杂", "困难", "challenging", "complex", "difficult", "unclear", "uncertain"],
-            "emotional_stress": ["压力", "紧急", "焦虑", "困扰", "stress", "urgent", "pressure", "worried", "confused"]
-        }
+        # Build task dependency map for relationship analysis
+        task_dependencies = defaultdict(list)
+        for task in tasks:
+            deps = task.get('dependencies', [])
+            if deps:
+                for dep in deps:
+                    task_dependencies[task.get('id')].append(dep)
         
+        # Analyze each task
         for task in tasks:
             task_text = f"{task.get('title', '')} {task.get('description', '')}".lower()
             task_risks = []
             risk_score = 0
+            confidence_score = 1.0
             
-            # Check for risk indicators
-            for category, keywords in risk_keywords.items():
-                for keyword in keywords:
-                    if keyword in task_text:
-                        task_risks.append(category)
-                        risk_summary["risk_categories"][category] += 1
-                        
-                        # Risk scoring
-                        if category in ["delay", "blocked"]:
-                            risk_score += 3
-                        elif category in ["external_dependency", "emotional_stress"]:
-                            risk_score += 2
-                        else:
-                            risk_score += 1
-                        break
+            # Enhanced keyword analysis with negation handling
+            for category, keyword_data in risk_keywords.items():
+                positive_matches = sum(1 for keyword in keyword_data["positive"] if keyword in task_text)
+                negative_matches = sum(1 for keyword in keyword_data["negative"] if keyword in task_text)
+                
+                # Calculate net risk score for this category
+                net_matches = positive_matches - negative_matches
+                if net_matches > 0:
+                    task_risks.append(category)
+                    risk_summary["risk_categories"][category] += 1
+                    category_score = net_matches * keyword_data["weight"]
+                    risk_score += category_score
+                    
+                    # Adjust confidence based on keyword strength
+                    confidence_score *= (1 + 0.1 * positive_matches)
             
-            # Priority-based risk (high priority tasks are inherently risky)
+            # Dependency risk analysis
+            task_id = task.get('id')
+            if task_id in task_dependencies:
+                dependency_count = len(task_dependencies[task_id])
+                if dependency_count > 3:
+                    task_risks.append("high_dependency")
+                    risk_score += dependency_count * 0.5
+                    
+            # Cross-task relationship risk
+            related_tasks = [t for t in tasks if t.get('module_id') == task.get('module_id') and t.get('id') != task.get('id')]
+            if len(related_tasks) > 5:
+                # High task density in module might indicate resource conflicts
+                task_risks.append("resource_conflict")
+                risk_score += 1
+            
+            # Priority-based risk with more nuanced scoring
             urgency = task.get('urgency', 2)
-            if urgency <= 1:  # P0, P1
+            if urgency == 0:  # P0 - Critical
+                risk_score += 3
+                task_risks.append("critical_priority")
+            elif urgency == 1:  # P1 - High
                 risk_score += 2
+            elif urgency == 2:  # P2 - Medium
+                risk_score += 0.5
             
-            # Age-based risk (old tasks might be stale)
+            # Enhanced age-based risk analysis
             try:
                 created_date = datetime.fromisoformat(task.get('created_at', '').replace('Z', '+00:00'))
-                days_old = (datetime.now().replace(tzinfo=created_date.tzinfo) - created_date).days
-                if days_old > 30:
-                    risk_score += 1
+                current_time = datetime.now().replace(tzinfo=created_date.tzinfo)
+                days_old = (current_time - created_date).days
+                
+                # Progressive age-based risk
+                if days_old > 60:
+                    risk_score += 2
+                    task_risks.append("very_stale")
+                elif days_old > 30:
+                    risk_score += 1.5
                     task_risks.append("stale")
                 elif days_old > 14:
                     risk_score += 0.5
+                    
+                # Check for deadline proximity if available
+                if task.get('due_date'):
+                    try:
+                        due_date = datetime.fromisoformat(task.get('due_date', '').replace('Z', '+00:00'))
+                        days_until_due = (due_date - current_time).days
+                        if days_until_due < 0:
+                            risk_score += 4  # Overdue
+                            task_risks.append("overdue")
+                        elif days_until_due <= 1:
+                            risk_score += 3  # Due soon
+                            task_risks.append("due_soon")
+                        elif days_until_due <= 3:
+                            risk_score += 1
+                    except:
+                        pass
             except:
                 pass
             
-            # Determine risk level
-            if risk_score >= 4:
+            # Task complexity analysis based on description length and content
+            description_length = len(task.get('description', ''))
+            if description_length > 500:
+                risk_score += 0.5  # Very detailed tasks might be complex
+            elif description_length < 20:
+                risk_score += 0.3  # Very short descriptions might be unclear
+                task_risks.append("unclear_scope")
+            
+            # Apply confidence adjustment
+            final_risk_score = risk_score * confidence_score
+            
+            # Enhanced risk level determination with confidence consideration
+            if final_risk_score >= 6:
+                risk_level = "critical"
+                risk_summary["high_risk"] += 1
+            elif final_risk_score >= 4:
                 risk_level = "high"
                 risk_summary["high_risk"] += 1
-            elif risk_score >= 2:
+            elif final_risk_score >= 2:
                 risk_level = "medium" 
                 risk_summary["medium_risk"] += 1
             else:
@@ -703,78 +810,314 @@ This week we worked on {len(tasks_data)} total tasks, with {len(completed_tasks)
                 risk_summary["low_risk"] += 1
             
             # Add to risky tasks if above threshold
-            if risk_score >= 2:
+            if final_risk_score >= 1.5:
                 risky_tasks.append({
                     "task": task,
                     "risk_level": risk_level,
-                    "risk_score": round(risk_score, 1),
+                    "risk_score": round(final_risk_score, 1),
+                    "confidence_score": round(confidence_score, 2),
                     "risk_categories": list(set(task_risks)),
-                    "recommendations": self._get_risk_recommendations(task_risks, task)
+                    "recommendations": self._get_enhanced_risk_recommendations(task_risks, task, final_risk_score),
+                    "priority_adjustment": self._calculate_priority_adjustment(task_risks, urgency),
+                    "estimated_impact": self._estimate_task_impact(task, task_risks)
                 })
         
-        # Sort by risk score
-        risky_tasks.sort(key=lambda x: x["risk_score"], reverse=True)
+        # Calculate project health score
+        total_tasks = len(tasks)
+        if total_tasks > 0:
+            health_score = max(0, 100 - (
+                (risk_summary["high_risk"] * 15) + 
+                (risk_summary["medium_risk"] * 5) + 
+                (risk_summary["low_risk"] * 1)
+            ) / total_tasks * 100)
+            risk_summary["project_health_score"] = round(health_score, 1)
         
+        # Calculate risk trends (placeholder for historical data)
+        risk_summary["risk_trends"] = self._calculate_risk_trends(risky_tasks)
+        
+        # Sort by risk score and confidence
+        risky_tasks.sort(key=lambda x: (x["risk_score"], x["confidence_score"]), reverse=True)
+        
+        # Enhanced return with more insights
         return {
             "risk_summary": risk_summary,
-            "risky_tasks": risky_tasks[:10],  # Top 10 risky tasks
-            "suggestions": self._generate_risk_suggestions(risk_summary, risky_tasks)
+            "risky_tasks": risky_tasks[:15],  # Top 15 risky tasks
+            "suggestions": self._generate_enhanced_risk_suggestions(risk_summary, risky_tasks),
+            "risk_distribution": self._calculate_risk_distribution(risky_tasks),
+            "action_items": self._generate_action_items(risky_tasks[:5]),  # Top 5 for immediate action
+            "project_insights": self._generate_project_insights(risk_summary, tasks)
         }
     
-    def _get_risk_recommendations(self, risk_categories: List[str], task: Dict) -> List[str]:
+    def _get_enhanced_risk_recommendations(self, risk_categories: List[str], task: Dict, risk_score: float) -> List[str]:
         """
-        Generate recommendations based on detected risk categories
+        Generate enhanced recommendations based on detected risk categories and context
         """
         recommendations = []
+        urgency = task.get('urgency', 2)
         
+        # Priority-based recommendations
         if "delay" in risk_categories:
-            recommendations.append("重新评估时间安排，考虑分解为更小的任务")
+            if urgency <= 1:
+                recommendations.append("🚨 高优先级任务延期 - 立即重新安排资源和时间线")
+            else:
+                recommendations.append("📅 重新评估时间安排，考虑分解为更小的任务")
+                
         if "blocked" in risk_categories:
-            recommendations.append("识别阻塞原因，寻找替代方案或升级处理")
+            recommendations.append("🚫 识别阻塞原因，建立每日站会跟踪解除进度")
+            if urgency <= 1:
+                recommendations.append("⚡ 高优先级阻塞 - 考虑升级到管理层处理")
+                
         if "external_dependency" in risk_categories:
-            recommendations.append("建立外部依赖跟踪，设置提醒和备选方案")
+            recommendations.append("🔗 建立外部依赖跟踪看板，设置定期检查点")
+            recommendations.append("🔄 准备备选方案，减少对外部依赖的风险")
+            
         if "complexity" in risk_categories:
-            recommendations.append("分解复杂任务，寻求专家支持或额外资源")
+            recommendations.append("🧩 分解复杂任务为可管理的子任务")
+            if risk_score > 4:
+                recommendations.append("👥 寻求技术专家支持或增加团队资源")
+                
         if "emotional_stress" in risk_categories:
-            recommendations.append("关注团队情绪，提供支持或调整工作负载")
-        if "stale" in risk_categories:
-            recommendations.append("审查任务相关性，考虑更新或关闭")
+            recommendations.append("💪 关注团队心理健康，考虑工作负载重新分配")
+            recommendations.append("🎯 设置更现实的期望和里程碑")
+            
+        if "resource_conflict" in risk_categories:
+            recommendations.append("⚖️ 审查资源分配，优化任务优先级")
+            recommendations.append("📊 使用工作负载分析工具平衡团队任务")
+            
+        if "technical_debt" in risk_categories:
+            recommendations.append("🔧 安排技术债务清理时间，防止累积")
+            
+        if "communication" in risk_categories:
+            recommendations.append("💬 加强团队沟通，明确需求和期望")
+            
+        if "stale" in risk_categories or "very_stale" in risk_categories:
+            recommendations.append("🗑️ 审查任务相关性，考虑更新、合并或关闭")
+            
+        if "overdue" in risk_categories:
+            recommendations.append("⏰ 任务已逾期 - 立即评估影响并制定恢复计划")
+            
+        if "due_soon" in risk_categories:
+            recommendations.append("⏳ 任务即将到期 - 确保资源就位并准备交付")
+            
+        if "unclear_scope" in risk_categories:
+            recommendations.append("📝 完善任务描述，明确验收标准和范围")
+        
+        # Generic recommendations based on risk score
+        if risk_score > 5:
+            recommendations.append("🎯 建议将此任务标记为本周重点关注项")
         
         if not recommendations:
-            recommendations.append("定期更新任务状态，保持沟通畅通")
+            recommendations.append("✅ 定期更新任务状态，保持团队沟通畅通")
             
-        return recommendations
+        return recommendations[:4]  # Limit to top 4 recommendations
     
-    def _generate_risk_suggestions(self, risk_summary: Dict, risky_tasks: List[Dict]) -> List[str]:
+    def _calculate_priority_adjustment(self, risk_categories: List[str], current_urgency: int) -> Dict:
         """
-        Generate overall suggestions based on risk analysis
+        Calculate suggested priority adjustment based on risk factors
+        """
+        adjustment = 0
+        reasons = []
+        
+        if "overdue" in risk_categories:
+            if current_urgency > 0:  # Only adjust if not already P0
+                adjustment = current_urgency  # Boost to P0
+                reasons.append("任务已逾期")
+            
+        if "blocked" in risk_categories and current_urgency > 1:
+            adjustment = max(adjustment, 1)  # At least boost by 1
+            reasons.append("任务被阻塞")
+            
+        if "critical_priority" in risk_categories:
+            adjustment = 0  # Already at highest priority
+            
+        return {
+            "suggested_urgency": max(0, current_urgency - adjustment),
+            "adjustment": adjustment,
+            "reasons": reasons
+        }
+    
+    def _estimate_task_impact(self, task: Dict, risk_categories: List[str]) -> Dict:
+        """
+        Estimate the potential impact of task risks
+        """
+        impact_score = 1.0
+        impact_areas = []
+        
+        # Base impact on task priority
+        urgency = task.get('urgency', 2)
+        if urgency == 0:
+            impact_score *= 3
+            impact_areas.append("关键业务功能")
+        elif urgency == 1:
+            impact_score *= 2
+            impact_areas.append("重要项目里程碑")
+            
+        # Impact based on risk categories
+        if "blocked" in risk_categories:
+            impact_score *= 1.5
+            impact_areas.append("下游任务进度")
+            
+        if "external_dependency" in risk_categories:
+            impact_score *= 1.3
+            impact_areas.append("合作伙伴关系")
+            
+        if "delay" in risk_categories:
+            impact_areas.append("项目交付时间")
+            
+        return {
+            "impact_score": round(impact_score, 1),
+            "impact_areas": impact_areas,
+            "severity": "高" if impact_score > 3 else "中" if impact_score > 1.5 else "低"
+        }
+    
+    def _calculate_risk_trends(self, risky_tasks: List[Dict]) -> Dict:
+        """
+        Calculate risk trends (placeholder for historical analysis)
+        """
+        # This would use historical data in a real implementation
+        return {
+            "trend_direction": "stable",  # up, down, stable
+            "weekly_change": 0,
+            "risk_velocity": "正常",  # 风险产生速度
+            "resolution_rate": "待分析"  # 风险解决率
+        }
+    
+    def _calculate_risk_distribution(self, risky_tasks: List[Dict]) -> Dict:
+        """
+        Calculate risk distribution across categories and modules
+        """
+        category_distribution = {}
+        module_distribution = {}
+        
+        for risky_task in risky_tasks:
+            # Category distribution
+            for category in risky_task["risk_categories"]:
+                category_distribution[category] = category_distribution.get(category, 0) + 1
+                
+            # Module distribution
+            module_id = risky_task["task"].get("module_id", "未分类")
+            module_distribution[str(module_id)] = module_distribution.get(str(module_id), 0) + 1
+        
+        return {
+            "by_category": category_distribution,
+            "by_module": module_distribution,
+            "total_risky_tasks": len(risky_tasks)
+        }
+    
+    def _generate_action_items(self, top_risky_tasks: List[Dict]) -> List[Dict]:
+        """
+        Generate specific action items for top risky tasks
+        """
+        action_items = []
+        
+        for task in top_risky_tasks:
+            action_item = {
+                "task_id": task["task"].get("id"),
+                "task_title": task["task"].get("title", ""),
+                "urgency": "高" if task["risk_score"] > 4 else "中",
+                "action": self._get_primary_action(task["risk_categories"]),
+                "owner": "待分配",
+                "deadline": "本周内" if task["risk_score"] > 4 else "下周内"
+            }
+            action_items.append(action_item)
+            
+        return action_items
+    
+    def _get_primary_action(self, risk_categories: List[str]) -> str:
+        """
+        Get the primary recommended action for a task
+        """
+        if "overdue" in risk_categories:
+            return "立即制定恢复计划"
+        elif "blocked" in risk_categories:
+            return "解除阻塞因素"
+        elif "delay" in risk_categories:
+            return "重新安排时间线"
+        elif "complexity" in risk_categories:
+            return "分解任务或寻求支持"
+        elif "emotional_stress" in risk_categories:
+            return "调整工作负载"
+        else:
+            return "评估和监控"
+    
+    def _generate_project_insights(self, risk_summary: Dict, tasks: List[Dict]) -> Dict:
+        """
+        Generate high-level project insights
+        """
+        total_tasks = len(tasks)
+        health_score = risk_summary.get("project_health_score", 0)
+        
+        insights = {
+            "overall_health": "良好" if health_score > 80 else "一般" if health_score > 60 else "需要关注",
+            "key_concerns": [],
+            "strengths": [],
+            "recommendations": []
+        }
+        
+        # Analyze key concerns
+        high_risk_ratio = risk_summary["high_risk"] / total_tasks if total_tasks > 0 else 0
+        if high_risk_ratio > 0.2:
+            insights["key_concerns"].append(f"高风险任务占比过高 ({high_risk_ratio:.1%})")
+            
+        # Analyze strengths
+        low_risk_ratio = risk_summary["low_risk"] / total_tasks if total_tasks > 0 else 0
+        if low_risk_ratio > 0.7:
+            insights["strengths"].append("大部分任务风险可控")
+            
+        # Generate recommendations
+        if health_score < 70:
+            insights["recommendations"].append("建议召开风险评审会议")
+            insights["recommendations"].append("重新评估项目优先级和资源分配")
+        
+        return insights
+    
+    def _generate_enhanced_risk_suggestions(self, risk_summary: Dict, risky_tasks: List[Dict]) -> List[str]:
+        """
+        Generate enhanced overall risk management suggestions
         """
         suggestions = []
         
+        high_risk_count = risk_summary["high_risk"]
         total_tasks = risk_summary["total_tasks"]
-        high_risk = risk_summary["high_risk"]
-        risk_categories = risk_summary["risk_categories"]
+        health_score = risk_summary.get("project_health_score", 100)
         
-        if high_risk > 0:
-            suggestions.append(f"发现 {high_risk} 个高风险任务，建议优先关注和处理")
+        # Health-based suggestions
+        if health_score < 50:
+            suggestions.append("🚨 项目健康度严重偏低，建议立即召开紧急风险评审会议")
+        elif health_score < 70:
+            suggestions.append("⚠️ 项目健康度需要关注，建议重新评估优先级和资源分配")
+        elif health_score > 85:
+            suggestions.append("✅ 项目健康度良好，继续保持当前管理水平")
+        
+        # Risk ratio analysis
+        if high_risk_count > total_tasks * 0.3:
+            suggestions.append("📊 高风险任务占比过高，建议进行任务优先级重排")
         
         # Category-specific suggestions
-        if risk_categories["delay"] > total_tasks * 0.2:
-            suggestions.append("多个任务存在延期风险，建议审查项目时间安排")
+        if risk_summary["risk_categories"]["blocked"] > 0:
+            suggestions.append("🚫 存在阻塞任务，建议建立阻塞问题升级机制")
+            
+        if risk_summary["risk_categories"]["delay"] > 0:
+            suggestions.append("⏰ 存在延期风险，建议启动时间线重新规划")
+            
+        if risk_summary["risk_categories"]["emotional_stress"] > 0:
+            suggestions.append("💪 团队压力较大，建议进行工作负载平衡分析")
+            
+        if risk_summary["risk_categories"]["external_dependency"] > 0:
+            suggestions.append("🔗 外部依赖风险较高，建议建立供应商管理流程")
+            
+        if risk_summary["risk_categories"]["resource_conflict"] > 0:
+            suggestions.append("⚖️ 资源冲突风险，建议优化资源分配策略")
         
-        if risk_categories["blocked"] > 0:
-            suggestions.append("存在阻塞任务，建议建立日常阻塞清理机制")
+        # Trend-based suggestions (placeholder)
+        trends = risk_summary.get("risk_trends", {})
+        if trends.get("trend_direction") == "up":
+            suggestions.append("📈 风险趋势上升，建议加强监控频率")
         
-        if risk_categories["external_dependency"] > 0:
-            suggestions.append("外部依赖较多，建议加强沟通和风险控制")
-        
-        if risk_categories["emotional_stress"] > 0:
-            suggestions.append("团队压力较大，建议关注工作负载和心理健康")
-        
-        if len(suggestions) == 0:
-            suggestions.append("整体风险较低，保持良好的任务管理习惯")
-        
-        return suggestions
+        if not suggestions:
+            suggestions.append("✅ 项目风险整体可控，继续保持良好的任务管理")
+            
+        return suggestions[:5]  # Limit to top 5 suggestions
 
     def create_theme_islands(self, tasks: List[Dict]) -> Dict:
         """
@@ -1068,10 +1411,48 @@ This week we worked on {len(tasks_data)} total tasks, with {len(completed_tasks)
 ai_client = AIClient()
 
 def ask(prompt: str) -> List[Dict]:
-    """
-    Convenience function to parse tasks using AI
-    """
-    return ai_client.parse_tasks(prompt)
+    """Ask AI a question and get structured response"""
+    client = AIClient()
+    
+    # Check if this is a task parsing request
+    if any(keyword in prompt.lower() for keyword in ['json格式', 'json', '解析', '提取', 'parse']):
+        # For single task parsing, call the model directly
+        if not client.model:
+            return []
+        
+        try:
+            response = client.model.generate_content(prompt)
+            response_text = response.text.strip()
+            
+            # Try to extract JSON from response
+            import json
+            import re
+            
+            # First try direct JSON parsing
+            try:
+                result = json.loads(response_text)
+                return [result] if isinstance(result, dict) else result
+            except:
+                pass
+            
+            # Try to find JSON in the response
+            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            if json_match:
+                try:
+                    result = json.loads(json_match.group())
+                    return [result] if isinstance(result, dict) else result
+                except:
+                    pass
+            
+            # If no JSON found, return empty
+            return []
+            
+        except Exception as e:
+            print(f"Direct AI call failed: {e}")
+            return []
+    else:
+        # For other requests, use the original parse_tasks method
+        return client.parse_tasks(prompt)
 
 def assistant_command(command: str, content: str, context: Optional[str] = None) -> str:
     """

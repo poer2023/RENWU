@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskWall Console Debug Check</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .error { color: red; background: #ffe6e6; padding: 10px; margin: 5px 0; border-radius: 5px; }
+        .warning { color: orange; background: #fff3cd; padding: 10px; margin: 5px 0; border-radius: 5px; }
+        .info { color: blue; background: #e6f3ff; padding: 10px; margin: 5px 0; border-radius: 5px; }
+        .success { color: green; background: #e6ffe6; padding: 10px; margin: 5px 0; border-radius: 5px; }
+        iframe { width: 100%; height: 600px; border: 1px solid #ccc; margin-top: 20px; }
+        #results { margin-bottom: 20px; }
+        .console-log { font-family: monospace; background: #f5f5f5; padding: 5px; margin: 2px 0; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>TaskWall Console Debug Check</h1>
+    <p>正在检查 TaskWall 应用的控制台错误...</p>
+    
+    <div id="results">
+        <div class="info">开始检查...</div>
+    </div>
+    
+    <h2>应用预览</h2>
+    <iframe id="taskwall-frame" src="http://localhost:3000"></iframe>
+    
+    <script>
+        const results = document.getElementById('results');
+        let errors = [];
+        let warnings = [];
+        let logs = [];
+        
+        function addResult(type, message) {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = message;
+            results.appendChild(div);
+        }
+        
+        function addConsoleLog(level, message) {
+            const div = document.createElement('div');
+            div.className = 'console-log';
+            div.innerHTML = `<strong>[${level.toUpperCase()}]</strong> ${message}`;
+            results.appendChild(div);
+        }
+        
+        // 监听iframe加载完成
+        const iframe = document.getElementById('taskwall-frame');
+        
+        iframe.onload = function() {
+            try {
+                addResult('info', 'TaskWall 应用已加载，开始检查控制台...');
+                
+                // 等待一段时间让应用完全初始化
+                setTimeout(() => {
+                    checkConsoleErrors();
+                }, 3000);
+                
+            } catch (error) {
+                addResult('error', `无法访问iframe内容: ${error.message}`);
+            }
+        };
+        
+        iframe.onerror = function() {
+            addResult('error', '无法加载 TaskWall 应用');
+        };
+        
+        function checkConsoleErrors() {
+            // 由于跨域限制，我们需要使用其他方法检查
+            addResult('warning', '由于浏览器安全限制，无法直接访问iframe的控制台。');
+            addResult('info', '请手动打开浏览器开发者工具检查控制台错误。');
+            
+            // 提供检查指南
+            const guide = `
+            手动检查步骤：
+            1. 打开 http://localhost:3000
+            2. 按 F12 打开开发者工具
+            3. 查看 Console 面板的错误信息
+            4. 查看 Network 面板的请求失败
+            5. 特别关注 useVirtualizedTasks、TaskCardLOD、TaskConnectionsLazy 相关错误
+            `;
+            
+            addResult('info', guide);
+            
+            // 测试API连接
+            testAPIConnection();
+        }
+        
+        async function testAPIConnection() {
+            try {
+                const response = await fetch('http://localhost:3000/api/tasks');
+                if (response.ok) {
+                    addResult('success', '✅ API连接正常');
+                    const data = await response.json();
+                    addResult('info', `获取到 ${Array.isArray(data) ? data.length : 0} 个任务`);
+                } else {
+                    addResult('error', `❌ API响应错误: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                addResult('error', `❌ API连接失败: ${error.message}`);
+            }
+            
+            // 测试后端直连
+            try {
+                const response = await fetch('http://localhost:8765/api/tasks');
+                if (response.ok) {
+                    addResult('success', '✅ 后端直连正常');
+                } else {
+                    addResult('error', `❌ 后端响应错误: ${response.status}`);
+                }
+            } catch (error) {
+                addResult('error', `❌ 后端连接失败: ${error.message}`);
+            }
+        }
+        
+        // 监听全局错误
+        window.addEventListener('error', (event) => {
+            addResult('error', `全局错误: ${event.error?.message || event.message}`);
+        });
+        
+        window.addEventListener('unhandledrejection', (event) => {
+            addResult('error', `未处理的Promise拒绝: ${event.reason}`);
+        });
+    </script>
+</body>
+</html>

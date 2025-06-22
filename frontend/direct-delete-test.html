@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>直接删除功能测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 5px;
+        }
+        button {
+            margin: 5px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-primary { background: #2196f3; color: white; }
+        .btn-success { background: #4caf50; color: white; }
+        .btn-danger { background: #f44336; color: white; }
+        .btn-info { background: #00bcd4; color: white; }
+        #taskframe {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+        }
+        .log {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 5px;
+        }
+        .log-success { background: #d4edda; color: #155724; }
+        .log-error { background: #f8d7da; color: #721c24; }
+        .log-info { background: #d1ecf1; color: #0c5460; }
+        .log-warning { background: #fff3cd; color: #856404; }
+        .instructions {
+            margin: 20px 0;
+            padding: 15px;
+            background: #fff8e1;
+            border-left: 4px solid #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 TaskWall 删除功能直接测试</h1>
+        
+        <div class="instructions">
+            <h3>📋 测试说明</h3>
+            <p>这个页面嵌入了TaskWall应用，让你可以直接测试删除功能：</p>
+            <ol>
+                <li>等待下方的TaskWall应用完全加载</li>
+                <li>使用小地图（右下角）找到并定位任务</li>
+                <li>点击任务选择它</li>
+                <li>测试不同的删除方式</li>
+                <li>观察下方的日志输出</li>
+            </ol>
+        </div>
+        
+        <div class="test-controls">
+            <h3>🎮 测试控制</h3>
+            <button class="btn-info" onclick="focusFrame()">聚焦到应用</button>
+            <button class="btn-primary" onclick="testDeleteKey()">模拟Delete键</button>
+            <button class="btn-primary" onclick="testCtrlD()">模拟Ctrl+D</button>
+            <button class="btn-success" onclick="checkTasks()">检查任务数量</button>
+            <button class="btn-danger" onclick="clearLogs()">清空日志</button>
+            <button class="btn-info" onclick="openDevTools()">打开开发者工具</button>
+        </div>
+        
+        <iframe 
+            id="taskframe" 
+            src="http://localhost:3000" 
+            onload="onFrameLoad()"
+        ></iframe>
+        
+        <div class="log" id="logContainer">
+            <div class="log-entry log-info">等待TaskWall应用加载...</div>
+        </div>
+    </div>
+
+    <script>
+        let frame = null;
+        let logContainer = null;
+        
+        function log(message, type = 'info') {
+            if (!logContainer) logContainer = document.getElementById('logContainer');
+            
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        function onFrameLoad() {
+            frame = document.getElementById('taskframe');
+            log('TaskWall应用框架已加载', 'success');
+            
+            // 监听iframe中的事件
+            try {
+                const iframeWindow = frame.contentWindow;
+                
+                // 监听键盘事件
+                iframeWindow.addEventListener('keydown', (e) => {
+                    if (e.key === 'Delete') {
+                        log('检测到Delete键按下', 'info');
+                    } else if (e.ctrlKey && e.key === 'd') {
+                        log('检测到Ctrl+D按下', 'info');
+                    }
+                });
+                
+                // 监听点击事件
+                iframeWindow.addEventListener('click', (e) => {
+                    if (e.target.closest('.task-node')) {
+                        log('任务被点击选择', 'success');
+                    } else if (e.target.closest('button') && e.target.textContent.includes('🗑')) {
+                        log('删除按钮被点击', 'warning');
+                    }
+                });
+                
+                log('事件监听器已设置', 'success');
+            } catch (error) {
+                log(`设置事件监听器失败: ${error.message}`, 'error');
+            }
+            
+            // 定期检查任务数量
+            setInterval(checkTasksInFrame, 5000);
+        }
+        
+        function focusFrame() {
+            if (frame) {
+                frame.contentWindow.focus();
+                log('已聚焦到TaskWall应用', 'info');
+            }
+        }
+        
+        function testDeleteKey() {
+            if (frame) {
+                try {
+                    const event = new KeyboardEvent('keydown', {
+                        key: 'Delete',
+                        code: 'Delete',
+                        keyCode: 46,
+                        which: 46,
+                        bubbles: true
+                    });
+                    
+                    frame.contentWindow.document.dispatchEvent(event);
+                    log('发送Delete键事件', 'info');
+                } catch (error) {
+                    log(`发送Delete键失败: ${error.message}`, 'error');
+                }
+            }
+        }
+        
+        function testCtrlD() {
+            if (frame) {
+                try {
+                    const event = new KeyboardEvent('keydown', {
+                        key: 'd',
+                        code: 'KeyD',
+                        ctrlKey: true,
+                        keyCode: 68,
+                        which: 68,
+                        bubbles: true
+                    });
+                    
+                    frame.contentWindow.document.dispatchEvent(event);
+                    log('发送Ctrl+D事件', 'info');
+                } catch (error) {
+                    log(`发送Ctrl+D失败: ${error.message}`, 'error');
+                }
+            }
+        }
+        
+        function checkTasks() {
+            checkTasksInFrame();
+        }
+        
+        function checkTasksInFrame() {
+            if (frame) {
+                try {
+                    const taskElements = frame.contentWindow.document.querySelectorAll('.task-wrapper, .task-node');
+                    log(`当前任务数量: ${taskElements.length}`, 'success');
+                    
+                    const selectedTasks = frame.contentWindow.document.querySelectorAll('.task-wrapper.selected, .task-node.selected');
+                    if (selectedTasks.length > 0) {
+                        log(`选中的任务数量: ${selectedTasks.length}`, 'info');
+                    }
+                } catch (error) {
+                    log(`检查任务失败: ${error.message}`, 'error');
+                }
+            }
+        }
+        
+        function clearLogs() {
+            if (logContainer) {
+                logContainer.innerHTML = '<div class="log-entry log-info">日志已清空</div>';
+            }
+        }
+        
+        function openDevTools() {
+            log('请按F12或右键→检查元素打开开发者工具', 'info');
+            log('切换到Network标签监控DELETE请求', 'info');
+            log('切换到Console标签查看JavaScript日志', 'info');
+        }
+        
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            logContainer = document.getElementById('logContainer');
+            log('测试页面已就绪', 'success');
+            
+            // 添加键盘快捷键
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey && e.key === 'l') {
+                    e.preventDefault();
+                    clearLogs();
+                } else if (e.key === 'F5') {
+                    log('刷新页面...', 'info');
+                }
+            });
+            
+            log('快捷键: Ctrl+L清空日志', 'info');
+        });
+        
+        // 监听iframe中的网络请求（如果可能）
+        function monitorNetworkRequests() {
+            if (frame && frame.contentWindow) {
+                try {
+                    // 重写fetch函数来监控请求
+                    const originalFetch = frame.contentWindow.fetch;
+                    frame.contentWindow.fetch = function(...args) {
+                        const url = args[0];
+                        const options = args[1] || {};
+                        
+                        if (options.method === 'DELETE' || (typeof url === 'string' && url.includes('tasks'))) {
+                            log(`网络请求: ${options.method || 'GET'} ${url}`, 'warning');
+                        }
+                        
+                        return originalFetch.apply(this, args).then(response => {
+                            if (options.method === 'DELETE') {
+                                log(`DELETE响应: ${response.status}`, response.ok ? 'success' : 'error');
+                            }
+                            return response;
+                        });
+                    };
+                    
+                    log('网络请求监控已启用', 'success');
+                } catch (error) {
+                    log(`网络监控设置失败: ${error.message}`, 'error');
+                }
+            }
+        }
+        
+        // 延迟启用网络监控
+        setTimeout(monitorNetworkRequests, 3000);
+    </script>
+</body>
+</html>

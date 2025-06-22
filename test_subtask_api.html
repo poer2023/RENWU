@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>子任务生成功能测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #007AFF;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056CC;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            color: #666;
+            margin: 20px 0;
+        }
+        .results {
+            margin-top: 30px;
+            display: none;
+        }
+        .subtask {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .subtask h3 {
+            margin: 0 0 10px 0;
+            color: #495057;
+        }
+        .subtask p {
+            margin: 5px 0;
+            color: #6c757d;
+            line-height: 1.5;
+        }
+        .priority {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .priority-0 { background-color: #dc3545; color: white; }
+        .priority-1 { background-color: #fd7e14; color: white; }
+        .priority-2 { background-color: #ffc107; color: black; }
+        .priority-3 { background-color: #28a745; color: white; }
+        .priority-4 { background-color: #6c757d; color: white; }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 5px;
+            margin-top: 20px;
+            display: none;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 5px;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI 子任务生成测试</h1>
+        
+        <form id="subtaskForm">
+            <div class="form-group">
+                <label for="taskTitle">任务标题:</label>
+                <input type="text" id="taskTitle" placeholder="例如：开发用户登录功能" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="taskDescription">任务描述:</label>
+                <textarea id="taskDescription" placeholder="详细描述任务的需求和目标..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="maxSubtasks">最大子任务数量:</label>
+                <input type="number" id="maxSubtasks" value="5" min="1" max="10">
+            </div>
+            
+            <button type="submit" id="generateBtn">🚀 生成子任务</button>
+        </form>
+        
+        <div class="loading" id="loading">
+            <p>⏳ AI 正在分析任务并生成子任务...</p>
+        </div>
+        
+        <div class="error" id="error"></div>
+        <div class="success" id="success"></div>
+        
+        <div class="results" id="results">
+            <h2>生成的子任务:</h2>
+            <div id="subtaskList"></div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('subtaskForm');
+        const generateBtn = document.getElementById('generateBtn');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const subtaskList = document.getElementById('subtaskList');
+        const error = document.getElementById('error');
+        const success = document.getElementById('success');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const title = document.getElementById('taskTitle').value.trim();
+            const description = document.getElementById('taskDescription').value.trim();
+            const maxSubtasks = parseInt(document.getElementById('maxSubtasks').value);
+            
+            if (!title) {
+                showError('请输入任务标题');
+                return;
+            }
+            
+            // 清除之前的结果
+            hideMessages();
+            results.style.display = 'none';
+            
+            // 显示加载状态
+            generateBtn.disabled = true;
+            loading.style.display = 'block';
+            
+            try {
+                console.log('发送请求到 /ai/subtasks...', {
+                    parent_task_title: title,
+                    parent_task_description: description,
+                    max_subtasks: maxSubtasks
+                });
+                
+                const response = await fetch('/ai/subtasks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        parent_task_title: title,
+                        parent_task_description: description,
+                        max_subtasks: maxSubtasks
+                    })
+                });
+                
+                console.log('收到响应:', response.status, response.statusText);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('API响应数据:', data);
+                
+                if (data.success && data.subtasks && data.subtasks.length > 0) {
+                    displaySubtasks(data.subtasks);
+                    showSuccess(`成功生成了 ${data.subtasks.length} 个子任务！`);
+                } else {
+                    throw new Error(data.error || '未能生成子任务');
+                }
+                
+            } catch (err) {
+                console.error('生成子任务失败:', err);
+                showError(`生成子任务失败: ${err.message}`);
+            } finally {
+                generateBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+        
+        function displaySubtasks(subtasks) {
+            subtaskList.innerHTML = '';
+            
+            subtasks.forEach((subtask, index) => {
+                const subtaskDiv = document.createElement('div');
+                subtaskDiv.className = 'subtask';
+                
+                const priorityNames = {
+                    0: '紧急',
+                    1: '高',
+                    2: '中',
+                    3: '低',
+                    4: '待办'
+                };
+                
+                subtaskDiv.innerHTML = `
+                    <h3>${index + 1}. ${subtask.title}</h3>
+                    <p><strong>描述:</strong> ${subtask.description || '无描述'}</p>
+                    <p><strong>优先级:</strong> 
+                        <span class="priority priority-${subtask.urgency}">
+                            ${priorityNames[subtask.urgency] || '中'}
+                        </span>
+                    </p>
+                `;
+                
+                subtaskList.appendChild(subtaskDiv);
+            });
+            
+            results.style.display = 'block';
+        }
+        
+        function showError(message) {
+            error.textContent = message;
+            error.style.display = 'block';
+        }
+        
+        function showSuccess(message) {
+            success.textContent = message;
+            success.style.display = 'block';
+        }
+        
+        function hideMessages() {
+            error.style.display = 'none';
+            success.style.display = 'none';
+        }
+        
+        // 页面加载时显示当前配置
+        console.log('测试页面已加载，准备测试子任务生成功能');
+        console.log('API端点: /ai/subtasks');
+        console.log('当前时间:', new Date().toLocaleString());
+    </script>
+</body>
+</html>

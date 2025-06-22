@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TaskWall 删除功能手动测试指南</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            background: #f4f4f4;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #007cba;
+        }
+        .result {
+            background: #e8f5e8;
+            padding: 10px;
+            margin: 5px 0;
+            border-left: 4px solid #4caf50;
+        }
+        .error {
+            background: #ffe8e8;
+            padding: 10px;
+            margin: 5px 0;
+            border-left: 4px solid #f44336;
+        }
+        code {
+            background: #f0f0f0;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #007cba;
+            padding-bottom: 5px;
+        }
+        h3 {
+            color: #555;
+        }
+        .step {
+            margin: 10px 0;
+            padding: 10px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .step h4 {
+            margin: 0 0 10px 0;
+            color: #007cba;
+        }
+    </style>
+</head>
+<body>
+    <h1>TaskWall 删除功能测试报告</h1>
+    
+    <h2>🔍 测试环境</h2>
+    <ul>
+        <li><strong>URL:</strong> http://localhost:3000</li>
+        <li><strong>任务数量:</strong> 27个任务已加载</li>
+        <li><strong>界面状态:</strong> 任务在画布中可见（通过小地图定位）</li>
+        <li><strong>浏览器:</strong> 支持 Chrome, Firefox, Safari, Mobile</li>
+    </ul>
+    
+    <h2>📋 删除功能测试方法</h2>
+    
+    <div class="test-section">
+        <h3>A. 按钮删除（有确认）</h3>
+        <div class="step">
+            <h4>步骤 1: 选择任务</h4>
+            <p>1. 打开 <code>http://localhost:3000</code></p>
+            <p>2. 使用小地图定位任务（右下角的小地图）</p>
+            <p>3. 点击小地图中的任务点来聚焦到任务</p>
+            <p>4. 点击任务卡片来选择它</p>
+        </div>
+        
+        <div class="step">
+            <h4>步骤 2: 查找删除按钮</h4>
+            <p>在任务选中后，查找以下删除按钮：</p>
+            <ul>
+                <li>🗑️ 图标按钮</li>
+                <li>"删除" 文字按钮</li>
+                <li>"Delete" 英文按钮</li>
+                <li>工具栏中的删除选项</li>
+            </ul>
+        </div>
+        
+        <div class="step">
+            <h4>步骤 3: 确认删除</h4>
+            <p>1. 点击删除按钮</p>
+            <p>2. 检查是否出现确认对话框</p>
+            <p>3. 点击"确认"、"确定"或"删除"按钮</p>
+            <p>4. 检查任务是否从画布中消失</p>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h3>B. Delete键删除（无确认）</h3>
+        <div class="step">
+            <h4>测试步骤</h4>
+            <p>1. 选择一个任务（点击任务卡片）</p>
+            <p>2. 按 <code>Delete</code> 键</p>
+            <p>3. 检查任务是否立即删除（无确认对话框）</p>
+            <p>4. 检查是否显示成功消息</p>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h3>C. Ctrl+D删除（无确认）</h3>
+        <div class="step">
+            <h4>测试步骤</h4>
+            <p>1. 选择一个任务（点击任务卡片）</p>
+            <p>2. 按 <code>Ctrl+D</code> (Windows/Linux) 或 <code>Cmd+D</code> (Mac)</p>
+            <p>3. 检查任务是否立即删除（无确认对话框）</p>
+            <p>4. 检查是否显示成功消息</p>
+        </div>
+    </div>
+    
+    <h2>🔧 网络请求监控</h2>
+    <div class="test-section">
+        <h3>检查网络请求</h3>
+        <div class="step">
+            <h4>监控步骤</h4>
+            <p>1. 打开浏览器开发者工具（F12）</p>
+            <p>2. 切换到 "Network" 标签</p>
+            <p>3. 执行删除操作</p>
+            <p>4. 查找 DELETE 请求到 <code>/api/tasks/{id}</code></p>
+            <p>5. 检查响应状态码（应该是 200 或 204）</p>
+        </div>
+    </div>
+    
+    <h2>⚠️ 常见问题排查</h2>
+    
+    <div class="test-section">
+        <h3>1. 任务不可见</h3>
+        <div class="step">
+            <h4>解决方案</h4>
+            <ul>
+                <li>使用小地图（右下角）定位任务</li>
+                <li>尝试滚轮缩放：<code>Ctrl + 滚轮</code></li>
+                <li>重置视图：查找"重置"或"居中"按钮</li>
+                <li>使用键盘：<code>Home</code> 键或 <code>Ctrl+0</code></li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. 删除无效果</h3>
+        <div class="step">
+            <h4>检查项</h4>
+            <ul>
+                <li>确认任务已选中（高亮显示）</li>
+                <li>检查控制台是否有JavaScript错误</li>
+                <li>确认网络请求已发送</li>
+                <li>检查API响应状态</li>
+            </ul>
+        </div>
+    </div>
+    
+    <h2>🎯 预期测试结果</h2>
+    
+    <div class="result">
+        <h3>✅ 成功标准</h3>
+        <ul>
+            <li><strong>Delete键删除：</strong> 任务立即删除，无确认对话框</li>
+            <li><strong>Ctrl+D删除：</strong> 任务立即删除，无确认对话框</li>
+            <li><strong>按钮删除：</strong> 显示确认对话框，确认后删除</li>
+            <li><strong>网络请求：</strong> DELETE请求发送到正确API端点</li>
+            <li><strong>用户反馈：</strong> 显示删除成功消息</li>
+            <li><strong>无错误：</strong> 控制台无JavaScript错误</li>
+        </ul>
+    </div>
+    
+    <h2>📊 实际测试结果</h2>
+    
+    <div class="result">
+        <h3>🔍 Playwright测试发现</h3>
+        <ul>
+            <li><strong>页面加载：</strong> ✅ 正常，27个任务已加载</li>
+            <li><strong>任务可见性：</strong> ✅ 任务存在且可通过小地图定位</li>
+            <li><strong>任务选择：</strong> ✅ 任务可点击选择</li>
+            <li><strong>网络连接：</strong> ✅ API请求正常（GET /api/tasks/ 返回200）</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h3>⏸️ 需要手动验证的项目</h3>
+        <p>由于Playwright测试在选择任务后进入等待状态，以下项目需要手动验证：</p>
+        <ul>
+            <li>Delete键是否触发删除</li>
+            <li>Ctrl+D是否触发删除</li>
+            <li>删除按钮是否存在和有效</li>
+            <li>DELETE API请求是否正确发送</li>
+            <li>删除成功后的UI反馈</li>
+        </ul>
+    </div>
+    
+    <h2>🚀 建议的手动测试流程</h2>
+    
+    <div class="step">
+        <h4>1. 基础验证</h4>
+        <p>访问 http://localhost:3000，确认页面正常加载且可以看到或定位到任务</p>
+    </div>
+    
+    <div class="step">
+        <h4>2. 快捷键测试</h4>
+        <p>选择任务后，依次测试Delete键和Ctrl+D，观察是否立即删除</p>
+    </div>
+    
+    <div class="step">
+        <h4>3. 按钮测试</h4>
+        <p>查找并点击删除按钮，验证确认流程</p>
+    </div>
+    
+    <div class="step">
+        <h4>4. 网络监控</h4>
+        <p>使用开发者工具监控删除操作的网络请求和响应</p>
+    </div>
+    
+    <div class="step">
+        <h4>5. 错误处理</h4>
+        <p>检查控制台错误和用户反馈消息</p>
+    </div>
+    
+    <script>
+        // 添加简单的交互功能
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('TaskWall删除功能测试指南已加载');
+            
+            // 添加复制功能到代码块
+            const codeElements = document.querySelectorAll('code');
+            codeElements.forEach(code => {
+                code.style.cursor = 'pointer';
+                code.title = '点击复制';
+                code.addEventListener('click', function() {
+                    navigator.clipboard.writeText(this.textContent);
+                    const original = this.textContent;
+                    this.textContent = '已复制!';
+                    setTimeout(() => {
+                        this.textContent = original;
+                    }, 1000);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

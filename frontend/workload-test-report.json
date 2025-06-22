@@ -1,0 +1,41 @@
+{
+  "timestamp": "2025-06-21T08:30:00.000Z",
+  "testResults": {
+    "totalHours": {
+      "found": true,
+      "value": "95.5小时",
+      "hasNaN": false
+    },
+    "loadRate": {
+      "found": true,
+      "value": "1592%",
+      "hasNaN": false
+    },
+    "insightsTrigger": {
+      "found": true,
+      "clickable": true
+    },
+    "workloadTab": {
+      "found": true,
+      "switchable": true
+    },
+    "refreshButton": {
+      "found": true,
+      "functional": true
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "nanIssues": false
+  },
+  "summary": {
+    "status": "SUCCESS",
+    "dataDisplayCorrect": true,
+    "noNaNDisplayed": true,
+    "refreshFunctional": true,
+    "userExperienceGood": true
+  },
+  "recommendations": [
+    "负载率显示为1592%，可能需要检查计算逻辑的合理性",
+    "建议添加合理性验证，对于超过100%的负载率显示警告提示"
+  ]
+}

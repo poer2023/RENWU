@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试中键拖动画布</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .test-canvas {
+            width: 100%;
+            height: 600px;
+            background: #fff;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+            cursor: grab;
+        }
+        
+        .test-canvas.grabbing {
+            cursor: grabbing;
+        }
+        
+        .canvas-content {
+            position: relative;
+            width: 2000px;
+            height: 2000px;
+            background-image: 
+                linear-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            transform-origin: 0 0;
+            transition: none;
+        }
+        
+        .test-task {
+            position: absolute;
+            width: 200px;
+            height: 120px;
+            background: #4a90e2;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            font-weight: bold;
+            user-select: none;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e8f4f8;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+        
+        .instructions {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .controls {
+            margin-bottom: 20px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            margin-right: 10px;
+            background: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #357abd;
+        }
+        
+        .event-log {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            background: white;
+            border-radius: 2px;
+        }
+        
+        .log-entry.middle-click {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+        
+        .log-entry.error {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🖱️ 测试中键拖动画布功能</h1>
+        
+        <div class="instructions">
+            <strong>测试说明：</strong>
+            <ul>
+                <li>按住鼠标中键（滚轮）拖动画布</li>
+                <li>左键点击可以选择/取消选择任务卡片</li>
+                <li>滚轮可以缩放画布</li>
+                <li>观察下方的事件日志，确认中键事件是否被正确捕获</li>
+            </ul>
+        </div>
+        
+        <div class="controls">
+            <button onclick="resetCanvas()">重置画布位置</button>
+            <button onclick="clearLog()">清空日志</button>
+            <button onclick="toggleDebug()">切换调试模式</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>画布测试区域</h3>
+            <div class="test-canvas" id="testCanvas">
+                <div class="canvas-content" id="canvasContent">
+                    <div class="test-task" style="left: 100px; top: 100px;">任务 1</div>
+                    <div class="test-task" style="left: 350px; top: 100px;">任务 2</div>
+                    <div class="test-task" style="left: 600px; top: 100px;">任务 3</div>
+                    <div class="test-task" style="left: 100px; top: 300px;">任务 4</div>
+                    <div class="test-task" style="left: 350px; top: 300px;">任务 5</div>
+                    <div class="test-task" style="left: 600px; top: 300px;">任务 6</div>
+                </div>
+            </div>
+            
+            <div class="status" id="status">
+                状态: 等待操作...
+                位置: x=0, y=0
+                缩放: 1.0x
+            </div>
+            
+            <div class="event-log" id="eventLog"></div>
+        </div>
+    </div>
+
+    <script>
+        let isPanning = false;
+        let startX = 0;
+        let startY = 0;
+        let currentX = 0;
+        let currentY = 0;
+        let scale = 1;
+        let debugMode = false;
+        
+        const canvas = document.getElementById('testCanvas');
+        const content = document.getElementById('canvasContent');
+        const status = document.getElementById('status');
+        const eventLog = document.getElementById('eventLog');
+        
+        // 添加事件日志
+        function addLog(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            eventLog.insertBefore(entry, eventLog.firstChild);
+            
+            // 限制日志数量
+            while (eventLog.children.length > 50) {
+                eventLog.removeChild(eventLog.lastChild);
+            }
+        }
+        
+        // 更新状态显示
+        function updateStatus() {
+            status.textContent = `状态: ${isPanning ? '拖动中...' : '等待操作...'}
+位置: x=${currentX.toFixed(1)}, y=${currentY.toFixed(1)}
+缩放: ${scale.toFixed(2)}x
+调试模式: ${debugMode ? '开启' : '关闭'}`;
+        }
+        
+        // 更新画布变换
+        function updateTransform() {
+            content.style.transform = `translate(${currentX}px, ${currentY}px) scale(${scale})`;
+        }
+        
+        // 处理鼠标按下事件
+        canvas.addEventListener('mousedown', (e) => {
+            if (debugMode) {
+                addLog(`mousedown - button: ${e.button}, clientX: ${e.clientX}, clientY: ${e.clientY}`);
+            }
+            
+            // 中键按下
+            if (e.button === 1) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                isPanning = true;
+                startX = e.clientX - currentX;
+                startY = e.clientY - currentY;
+                canvas.classList.add('grabbing');
+                
+                addLog('中键按下 - 开始拖动画布', 'middle-click');
+                updateStatus();
+            }
+        });
+        
+        // 处理鼠标移动事件
+        document.addEventListener('mousemove', (e) => {
+            if (isPanning) {
+                e.preventDefault();
+                
+                currentX = e.clientX - startX;
+                currentY = e.clientY - startY;
+                
+                updateTransform();
+                updateStatus();
+                
+                if (debugMode) {
+                    addLog(`拖动中 - 位置: (${currentX.toFixed(1)}, ${currentY.toFixed(1)})`);
+                }
+            }
+        });
+        
+        // 处理鼠标松开事件
+        document.addEventListener('mouseup', (e) => {
+            if (isPanning && e.button === 1) {
+                isPanning = false;
+                canvas.classList.remove('grabbing');
+                
+                addLog(`中键松开 - 拖动结束，最终位置: (${currentX.toFixed(1)}, ${currentY.toFixed(1)})`, 'middle-click');
+                updateStatus();
+            }
+        });
+        
+        // 处理auxclick事件（中键点击）
+        canvas.addEventListener('auxclick', (e) => {
+            if (e.button === 1) {
+                e.preventDefault();
+                addLog('auxclick事件 - 中键点击被阻止默认行为', 'middle-click');
+            }
+        });
+        
+        // 处理滚轮事件
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            const newScale = Math.max(0.1, Math.min(3, scale * delta));
+            
+            if (newScale !== scale) {
+                // 以鼠标位置为中心缩放
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                const worldX = (mouseX - currentX) / scale;
+                const worldY = (mouseY - currentY) / scale;
+                
+                scale = newScale;
+                
+                currentX = mouseX - worldX * scale;
+                currentY = mouseY - worldY * scale;
+                
+                updateTransform();
+                updateStatus();
+                
+                if (debugMode) {
+                    addLog(`滚轮缩放 - scale: ${scale.toFixed(2)}`);
+                }
+            }
+        });
+        
+        // 阻止右键菜单
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            addLog('右键菜单被阻止');
+        });
+        
+        // 重置画布位置
+        function resetCanvas() {
+            currentX = 0;
+            currentY = 0;
+            scale = 1;
+            updateTransform();
+            updateStatus();
+            addLog('画布位置已重置');
+        }
+        
+        // 清空日志
+        function clearLog() {
+            eventLog.innerHTML = '';
+            addLog('日志已清空');
+        }
+        
+        // 切换调试模式
+        function toggleDebug() {
+            debugMode = !debugMode;
+            updateStatus();
+            addLog(`调试模式${debugMode ? '已开启' : '已关闭'}`);
+        }
+        
+        // 初始化
+        updateStatus();
+        addLog('测试页面已加载，请尝试使用中键拖动画布');
+        
+        // 测试浏览器支持
+        if (!('onmousedown' in canvas)) {
+            addLog('警告：浏览器可能不支持mousedown事件', 'error');
+        }
+        
+        // 显示浏览器信息
+        addLog(`浏览器: ${navigator.userAgent}`);
+    </script>
+</body>
+</html> 

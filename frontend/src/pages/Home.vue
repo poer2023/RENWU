@@ -13,250 +13,70 @@
         
         <!-- Main Canvas Component -->
         <StickyCanvas
-          v-if="currentView === 'canvas'"
+          v-if="currentView === 'canvas' || currentView === 'island'"
           ref="stickyCanvasRef"
           :tasks="taskStore.tasks"
           :selected-task="selectedTask"
+          :island-view="currentView === 'island'"
+          :island-view-enabled="islandViewEnabled"
+          :theme-islands="themeIslands"
           @select-task="handleTaskSelect"
           @open-task-details="handleOpenTaskDetails"
           @auto-arrange-complete="handleAutoArrangeComplete"
         />
         
         <!-- Timeline View Component -->
-        <div v-if="currentView === 'timeline'" class="timeline-view">
-          <div class="timeline-header">
-            <h2>📅 时间线视图</h2>
-            <div class="timeline-controls">
-              <el-button-group>
-                <el-button 
-                  :type="timelineFilter === 'all' ? 'primary' : ''"
-                  @click="timelineFilter = 'all'"
-                  size="small"
-                >
-                  全部
-                </el-button>
-                <el-button 
-                  :type="timelineFilter === 'pending' ? 'primary' : ''"
-                  @click="timelineFilter = 'pending'"
-                  size="small"
-                >
-                  进行中
-                </el-button>
-                <el-button 
-                  :type="timelineFilter === 'completed' ? 'primary' : ''"
-                  @click="timelineFilter = 'completed'"
-                  size="small"
-                >
-                  已完成
-                </el-button>
-              </el-button-group>
-            </div>
-          </div>
-          
-          <div class="timeline-container">
-            <div class="timeline-line"></div>
-            
-            <div v-if="filteredTimelineTasks.length === 0" class="timeline-empty">
-              <div class="empty-content">
-                <div class="empty-icon">📅</div>
-                <h3>暂无任务</h3>
-                <p>{{ timelineFilter === 'all' ? '还没有任务' : getTimelineEmptyMessage() }}</p>
-              </div>
-            </div>
-            
-            <div 
-              v-for="(task, index) in filteredTimelineTasks" 
-              :key="task.id"
-              class="timeline-item"
-              :class="getTimelineItemClass(task)"
-              @click="handleTimelineTaskClick(task)"
-            >
-              <div class="timeline-dot" :style="{ backgroundColor: getTaskColor(task) }"></div>
-              <div class="timeline-content">
-                <div class="timeline-date">
-                  {{ formatTimelineDate(task.created_at || task.updated_at) }}
-                </div>
-                <div class="timeline-task">
-                  <div class="task-header">
-                    <h4>{{ task.title }}</h4>
-                    <div class="task-badges">
-                      <span class="priority-badge" :class="getPriorityClass(task.urgency)">
-                        {{ getPriorityText(task.urgency) }}
-                      </span>
-                      <span v-if="task.status" class="status-badge" :class="task.status">
-                        {{ getStatusText(task.status) }}
-                      </span>
-                    </div>
-                  </div>
-                  <p v-if="task.description" class="task-description">
-                    {{ task.description }}
-                  </p>
-                  <div class="task-meta">
-                    <span v-if="task.module_id" class="module-tag">
-                      {{ getModuleName(task.module_id) }}
-                    </span>
-                    <span class="task-id">#{{ task.id }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <TimelineView
+          v-if="currentView === 'timeline'"
+          :tasks="taskStore.tasks"
+          @task-click="handleTimelineTaskClick"
+        />
         
         <!-- Empty state -->
         <div v-if="taskStore.tasks.length === 0" class="empty-state">
           <div class="empty-content">
             <div class="empty-icon">📁</div>
             <h2>欢迎使用 TaskWall</h2>
-            <p>点击右下角 + 按钮开始创建任务</p>
+            <p>点击顶部洞察按钮，然后选择添加任务开始创建</p>
             <p class="shortcut-hint">或按 <kbd>Q</kbd> 快速添加</p>
           </div>
         </div>
+        
       </main>
       
-      <!-- Context Toolbar (appears when nodes are selected) -->
-      <div 
-        v-if="selectedTask && showContextToolbar" 
-        class="context-toolbar"
-        :style="contextToolbarPosition"
-      >
-        <div class="toolbar-button" @click="linkTasks" title="创建依赖">
-          🔗
-        </div>
-        <div class="toolbar-button" @click="showAlignOptions = !showAlignOptions" title="对齐">
-          〢
-        </div>
-        <div class="toolbar-button" @click="generateSubtasksForSelected" title="AI子任务">
-          🧩
-        </div>
-        <div class="toolbar-button delete" @click="deleteSelectedTask" title="删除">
-          🗑
-        </div>
-        
-        <!-- Align Options Dropdown -->
-        <div v-if="showAlignOptions" class="align-dropdown">
-          <div class="align-option" @click="alignNodes('left')">左对齐</div>
-          <div class="align-option" @click="alignNodes('center')">居中</div>
-          <div class="align-option" @click="alignNodes('right')">右对齐</div>
-        </div>
-      </div>
+      <!-- Context Toolbar -->
+      <ContextToolbar
+        :visible="selectedTask && showContextToolbar"
+        :position="contextToolbarPosition"
+        @link-tasks="linkTasks"
+        @generate-subtasks="generateSubtasksForSelected"
+        @delete-task="deleteSelectedTask"
+        @align-nodes="alignNodes"
+      />
       
-      <!-- Floating Action Buttons -->
-      <div class="fab-container">
-        <!-- Main FAB -->
-        <div 
-          class="fab-main" 
-          :class="{ 'fab-expanded': fabExpanded }"
-          @click="toggleFab"
-        >
-          <div class="fab-icon">
-            <span v-if="!fabExpanded">+</span>
-            <span v-else>×</span>
-          </div>
-        </div>
-        
-        <!-- Sub FABs -->
-        <transition-group name="fab-sub" tag="div" class="fab-sub-container">
-          <div 
-            v-if="fabExpanded"
-            v-for="(action, index) in fabActions"
-            :key="action.key"
-            class="fab-sub"
-            :style="getFabSubPosition(index)"
-            @click="executeFabAction(action)"
-            :title="action.title"
-          >
-            <div class="fab-sub-icon">{{ action.icon }}</div>
-            <div class="fab-sub-label">{{ action.label }}</div>
-          </div>
-        </transition-group>
-        
-        <!-- View Switcher FAB -->
-        <div 
-          class="fab-view-switcher" 
-          @click="switchView"
-          :title="getViewSwitcherTitle()"
-        >
-          <div class="fab-icon">{{ getCurrentViewIcon() }}</div>
-        </div>
-      </div>
-      
-      <!-- Insight Drawer Trigger -->
-      <div class="insight-trigger" @click="toggleInsightDrawer">
-        <div class="insight-icon">📈</div>
-        <div class="insight-label">Insights</div>
-      </div>
       
       <!-- Insight Drawer -->
-      <div 
-        class="insight-drawer"
-        :class="{ 'drawer-open': insightDrawerOpen }"
+      <InsightDrawer
+        v-model:open="insightDrawerOpen"
+        :workload-data="workloadData"
+        :show-risk-radar="showRiskRadar"
+        :show-debug-tab="advancedSettings.showDebugInfo"
+        :current-view="currentView"
+        :tasks="taskStore.tasks"
+        @refresh-workload="refreshWorkloadAnalysis"
+        @analyze-risks="analyzeRisks"
+        @toggle-risk-radar="(value) => showRiskRadar = value"
+        @open-settings="openSettings"
+        @open-search="openGlobalSearch"
+        @open-quick-add="openQuickAdd"
+        @open-ai-assistant="openAIAssistant"
+        @switch-view="switchView"
+        @select-task="handleTaskSelect"
       >
-        <div class="drawer-header">
-          <h3>Insights</h3>
-          <button class="drawer-close" @click="insightDrawerOpen = false">×</button>
-        </div>
-        
-        <div class="drawer-tabs">
-          <div 
-            class="drawer-tab"
-            :class="{ active: activeInsightTab === 'workload' }"
-            @click="activeInsightTab = 'workload'"
-          >
-            Workload
-          </div>
-          <div 
-            class="drawer-tab"
-            :class="{ active: activeInsightTab === 'risk' }"
-            @click="activeInsightTab = 'risk'"
-          >
-            Risk
-          </div>
-          <div 
-            class="drawer-tab"
-            :class="{ active: activeInsightTab === 'debug' }"
-            @click="activeInsightTab = 'debug'"
-            v-if="advancedSettings.showDebugInfo"
-          >
-            Debug
-          </div>
-        </div>
-        
-        <div class="drawer-content">
-          <!-- Workload Tab -->
-          <div v-if="activeInsightTab === 'workload'" class="insight-content">
-            <div v-if="workloadAnalysis" class="workload-summary">
-              <div class="stat-item">
-                <span class="stat-label">总工时:</span>
-                <span class="stat-value">{{ workloadAnalysis.total_hours }}小时</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">负载率:</span>
-                <span class="stat-value" :class="getWorkloadColor(workloadAnalysis.workload_percentage)">
-                  {{ Math.round(workloadAnalysis.workload_percentage) }}%
-                </span>
-              </div>
-            </div>
-            <button class="refresh-btn" @click="refreshWorkloadAnalysis">刷新分析</button>
-          </div>
-          
-          <!-- Risk Tab -->
-          <div v-if="activeInsightTab === 'risk'" class="insight-content">
-            <button class="analyze-btn" @click="analyzeRisks">分析风险</button>
-            <div class="risk-toggle">
-              <label>
-                <input type="checkbox" v-model="showRiskRadar" />
-                显示风险雷达
-              </label>
-            </div>
-          </div>
-          
-          <!-- Debug Tab -->
-          <div v-if="activeInsightTab === 'debug' && advancedSettings.showDebugInfo" class="insight-content">
-            <DebugTaskList :tasks="taskStore.tasks" />
-          </div>
-        </div>
-      </div>
+        <template #debug-content>
+          <DebugTaskList :tasks="taskStore.tasks" />
+        </template>
+      </InsightDrawer>
     </div>
 
     <!-- Task Details Popup -->
@@ -268,410 +88,37 @@
     />
 
     <!-- Quick Add Dialog -->
-    <el-dialog v-model="showQuickAdd" title="快速添加任务" width="500px">
-      <el-form>
-        <el-form-item label="标题">
-          <el-input v-model="newTask.title" placeholder="任务标题" />
-        </el-form-item>
-        <el-form-item label="描述">
-          <el-input 
-            v-model="newTask.description" 
-            type="textarea" 
-            :rows="3"
-            placeholder="任务描述"
-          />
-        </el-form-item>
-        <el-form-item label="优先级">
-          <el-select v-model="newTask.urgency" class="w-full">
-            <el-option label="P0 - 紧急" :value="0" />
-            <el-option label="P1 - 高" :value="1" />
-            <el-option label="P2 - 中" :value="2" />
-            <el-option label="P3 - 低" :value="3" />
-            <el-option label="P4 - 待办" :value="4" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="模块">
-          <el-select v-model="newTask.module_id" class="w-full" clearable>
-            <el-option
-              v-for="module in taskStore.modules"
-              :key="module.id"
-              :label="module.name"
-              :value="module.id"
-            />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      
-      <template #footer>
-        <el-button @click="showQuickAdd = false">取消</el-button>
-        <el-button type="primary" @click="createQuickTask">创建任务</el-button>
-      </template>
-    </el-dialog>
+    <QuickAddDialog
+      v-model="showQuickAdd"
+      :modules="taskStore.modules"
+      @created="handleQuickTaskCreated"
+    />
 
     <!-- New Module Dialog -->
-    <el-dialog v-model="showNewModule" title="新建模块" width="400px">
-      <el-form>
-        <el-form-item label="名称">
-          <el-input v-model="newModule.name" placeholder="模块名称" />
-        </el-form-item>
-        <el-form-item label="颜色">
-          <el-color-picker v-model="newModule.color" />
-        </el-form-item>
-      </el-form>
-      
-      <template #footer>
-        <el-button @click="showNewModule = false">取消</el-button>
-        <el-button type="primary" @click="createModule">创建模块</el-button>
-      </template>
-    </el-dialog>
+    <NewModuleDialog
+      v-model="showNewModule"
+      @created="handleModuleCreated"
+    />
 
     <!-- Auto Arrange Dialog -->
-    <el-dialog v-model="showAutoArrangeDialog" title="自动排列" width="600px">
-      <el-form label-position="top">
-        <el-form-item label="排列模式">
-          <el-select v-model="settingsStore.autoArrangeOptions.mode" class="w-full">
-            <el-option
-              v-for="mode in settingsStore.autoArrangeModes"
-              :key="mode.value"
-              :label="`${mode.icon} ${mode.label}`"
-              :value="mode.value"
-            >
-              <div>
-                <span style="font-size: 16px; margin-right: 8px;">{{ mode.icon }}</span>
-                <strong>{{ mode.label }}</strong>
-                <div style="font-size: 12px; color: #999; margin-top: 2px;">
-                  {{ mode.description }}
-                </div>
-              </div>
-            </el-option>
-          </el-select>
-        </el-form-item>
-
-        <div class="form-row">
-          <el-form-item label="间距" class="form-item-half">
-            <el-input-number
-              v-model="settingsStore.autoArrangeOptions.spacing"
-              :min="5"
-              :max="100"
-              :step="5"
-              class="w-full"
-            />
-          </el-form-item>
-          
-          <el-form-item label="边距" class="form-item-half">
-            <el-input-number
-              v-model="settingsStore.autoArrangeOptions.padding"
-              :min="10"
-              :max="200"
-              :step="10"
-              class="w-full"
-            />
-          </el-form-item>
-        </div>
-
-        <el-form-item v-if="settingsStore.autoArrangeOptions.mode === 'grid'" label="列数">
-          <el-input-number
-            v-model="settingsStore.autoArrangeOptions.columns"
-            :min="1"
-            :max="10"
-            class="w-full"
-          />
-        </el-form-item>
-
-        <el-form-item>
-          <el-checkbox v-model="settingsStore.autoArrangeOptions.animated">
-            使用动画过渡
-          </el-checkbox>
-        </el-form-item>
-
-        <el-form-item>
-          <el-checkbox v-model="settingsStore.autoArrangeOptions.groupByModule">
-            按模块分组
-          </el-checkbox>
-        </el-form-item>
-
-        <el-form-item>
-          <el-checkbox v-model="settingsStore.autoArrangeOptions.sortByPriority">
-            按优先级排序
-          </el-checkbox>
-        </el-form-item>
-      </el-form>
-      
-      <template #footer>
-        <el-button @click="showAutoArrangeDialog = false">取消</el-button>
-        <el-button type="primary" @click="triggerAutoArrange">立即排列</el-button>
-      </template>
-    </el-dialog>
+    <AutoArrangeDialog
+      v-model="showAutoArrangeDialog"
+      @arrange="triggerAutoArrange"
+    />
 
     <!-- Backup Dialog -->
-    <el-dialog v-model="showBackupDialog" title="备份管理" width="600px">
-      <el-tabs>
-        <el-tab-pane label="手动备份" name="manual">
-          <el-form label-position="top">
-            <el-form-item label="备份状态">
-              <div class="backup-status">
-                <el-alert
-                  v-if="backupStatus"
-                  :title="backupStatus"
-                  type="info"
-                  :closable="false"
-                  style="margin-bottom: 16px;"
-                />
-                <el-button 
-                  @click="createManualBackup" 
-                  type="primary" 
-                  :loading="loading"
-                  style="width: 100%;"
-                >
-                  立即创建备份
-                </el-button>
-              </div>
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
-        
-        <el-tab-pane label="备份历史" name="history">
-          <div class="backup-history">
-            <el-button @click="loadBackupHistory" size="small" style="margin-bottom: 16px;">
-              刷新历史
-            </el-button>
-            <div v-if="backupHistory.length === 0" class="empty-history">
-              <p>暂无备份历史</p>
-            </div>
-            <div v-else class="history-list">
-              <div 
-                v-for="backup in backupHistory" 
-                :key="backup.filename"
-                class="history-item"
-              >
-                <div class="backup-info">
-                  <strong>{{ backup.filename }}</strong>
-                  <p class="backup-date">{{ backup.created_at || '未知日期' }}</p>
-                </div>
-                <div class="backup-actions">
-                  <el-button size="small" @click="downloadBackup(backup.filename)">
-                    下载
-                  </el-button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </el-tab-pane>
-        
-        <el-tab-pane label="自动备份" name="auto">
-          <el-form label-position="top">
-            <el-form-item label="自动备份设置">
-              <el-checkbox v-model="settingsStore.autoBackup" @change="settingsStore.toggleAutoBackup">
-                启用自动备份
-              </el-checkbox>
-              <small style="display: block; margin-top: 8px; color: var(--text-muted);">
-                自动备份将在后台定期执行
-              </small>
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
-      </el-tabs>
-      
-      <template #footer>
-        <el-button @click="showBackupDialog = false">关闭</el-button>
-      </template>
-    </el-dialog>
+    <BackupDialog v-model="showBackupDialog" />
 
     <!-- Settings Dialog -->
-    <el-dialog v-model="showSettings" title="设置" width="600px">
-      <el-tabs>
-        <el-tab-pane label="快捷键" name="shortcuts">
-          <el-form label-position="top">
-            <el-form-item label="键盘布局">
-              <el-radio-group v-model="settingsStore.keyboardLayout" @change="settingsStore.setKeyboardLayout">
-                <el-radio value="windows">Windows (Ctrl)</el-radio>
-                <el-radio value="mac">Mac (⌘)</el-radio>
-              </el-radio-group>
-            </el-form-item>
-            
-            <el-form-item label="快捷键列表">
-              <div class="shortcuts-list">
-                <div v-for="(shortcut, key) in settingsStore.shortcuts" :key="key" class="shortcut-item">
-                  <span class="shortcut-name">{{ getShortcutName(key) }}</span>
-                  <el-tag size="small">{{ settingsStore.formatShortcut(shortcut) }}</el-tag>
-                </div>
-              </div>
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
-        
-        <el-tab-pane label="AI设置" name="ai">
-          <el-form label-position="top">
-            <el-form-item label="Gemini API Key">
-              <el-input 
-                v-model="settingsStore.geminiApiKey" 
-                type="password" 
-                placeholder="输入你的 Gemini API key 用于AI解析"
-              />
-              <small>用于从文本中AI智能解析任务</small>
-            </el-form-item>
-            
-            <el-form-item label="AI功能启用">
-              <div class="ai-features-list">
-                <el-checkbox v-model="aiFeatures.textParsing">
-                  智能文本解析
-                </el-checkbox>
-                <small>从纯文本中自动识别和创建任务</small>
-                
-                <el-checkbox v-model="aiFeatures.subtaskGeneration">
-                  子任务生成
-                </el-checkbox>
-                <small>为复杂任务自动生成子任务</small>
-                
-                <el-checkbox v-model="aiFeatures.similarityDetection">
-                  相似任务检测
-                </el-checkbox>
-                <small>创建任务时检测已有的相似任务</small>
-                
-                <el-checkbox v-model="aiFeatures.weeklyReports">
-                  周报生成
-                </el-checkbox>
-                <small>自动生成工作周报</small>
-                
-                <el-checkbox v-model="aiFeatures.riskAnalysis">
-                  风险分析
-                </el-checkbox>
-                <small>分析任务风险并提供建议</small>
-                
-                <el-checkbox v-model="aiFeatures.themeIslands">
-                  主题岛聚类
-                </el-checkbox>
-                <small>基于主题自动分组相关任务</small>
-              </div>
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
-        
-        <el-tab-pane label="界面" name="interface">
-          <el-form label-position="top">
-            <el-form-item>
-              <el-checkbox v-model="settingsStore.gridVisible" @change="settingsStore.toggleGrid">
-                显示网格背景
-              </el-checkbox>
-            </el-form-item>
-            
-            <el-form-item>
-              <el-checkbox v-model="settingsStore.notifications" @change="settingsStore.toggleNotifications">
-                启用通知
-              </el-checkbox>
-            </el-form-item>
-            
-            <el-form-item>
-              <el-checkbox v-model="settingsStore.autoSave" @change="settingsStore.toggleAutoSave">
-                自动保存
-              </el-checkbox>
-            </el-form-item>
-            
-            <el-form-item>
-              <el-checkbox v-model="settingsStore.autoBackup" @change="settingsStore.toggleAutoBackup">
-                自动备份
-              </el-checkbox>
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
-        
-        <el-tab-pane label="数据管理" name="data">
-          <el-form label-position="top">
-            <el-form-item label="导出设置">
-              <div class="export-options">
-                <el-checkbox v-model="exportOptions.includeHistory">
-                  包含历史记录
-                </el-checkbox>
-                <el-checkbox v-model="exportOptions.includeDependencies">
-                  包含任务依赖关系
-                </el-checkbox>
-                <el-checkbox v-model="exportOptions.includeModules">
-                  包含模块信息
-                </el-checkbox>
-              </div>
-            </el-form-item>
-            
-            <el-form-item label="数据统计">
-              <div class="data-stats">
-                <div class="stat-item">
-                  <span class="stat-label">总任务数:</span>
-                  <span class="stat-value">{{ taskStore.tasks.length }}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">模块数:</span>
-                  <span class="stat-value">{{ taskStore.modules.length }}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">依赖关系:</span>
-                  <span class="stat-value">{{ taskStore.dependencies.length }}</span>
-                </div>
-              </div>
-            </el-form-item>
-            
-            <el-form-item label="操作">
-              <div class="data-actions">
-                <el-button @click="exportTasks" type="primary" size="small">
-                  导出数据
-                </el-button>
-                <el-button @click="showBackupDialog = true" size="small">
-                  备份管理
-                </el-button>
-                <el-button @click="clearCache" size="small" type="warning">
-                  清除缓存
-                </el-button>
-              </div>
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
-        
-        <el-tab-pane label="高级" name="advanced">
-          <el-form label-position="top">
-            <el-form-item label="性能优化">
-              <el-checkbox v-model="advancedSettings.enableAnimations">
-                启用动画效果
-              </el-checkbox>
-              <el-checkbox v-model="advancedSettings.enableAutoLayout">
-                启用自动布局
-              </el-checkbox>
-              <el-checkbox v-model="advancedSettings.enableKeyboardShortcuts">
-                启用键盘快捷键
-              </el-checkbox>
-            </el-form-item>
-            
-            <el-form-item label="调试">
-              <el-checkbox v-model="advancedSettings.showDebugInfo">
-                显示调试信息
-              </el-checkbox>
-              <el-checkbox v-model="advancedSettings.enableConsoleLogging">
-                启用控制台日志
-              </el-checkbox>
-            </el-form-item>
-            
-            <el-form-item label="实验性功能">
-              <div class="experimental-features">
-                <el-checkbox v-model="advancedSettings.enableBetaFeatures">
-                  启用测试功能
-                </el-checkbox>
-                <small>可能包含不稳定的新功能</small>
-              </div>
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
-      </el-tabs>
-      
-      <template #footer>
-        <el-button @click="showSettings = false">取消</el-button>
-        <el-button type="primary" @click="saveSettings">保存设置</el-button>
-      </template>
-    </el-dialog>
+    <SettingsDialog v-model="showSettings" />
 
     <!-- Similar Tasks Dialog -->
     <SimilarTaskDialog
       v-model:visible="showSimilarTasksDialog"
-      :new-task-title="pendingTask?.title || ''"
-      :new-task-description="pendingTask?.description || ''"
-      :similar-tasks="similarTasksData?.similar_tasks || []"
-      :suggestions="similarTasksData?.suggestions || []"
+      :new-task-title="taskOps.pendingTask.value?.title || ''"
+      :new-task-description="taskOps.pendingTask.value?.description || ''"
+      :similar-tasks="taskOps.similarTasksData.value?.similar_tasks || []"
+      :suggestions="taskOps.similarTasksData.value?.suggestions || []"
       @cancel="handleSimilarTasksCancel"
       @ignore="handleSimilarTasksIgnore"
       @create="handleSimilarTasksCreate"
@@ -689,247 +136,28 @@
     />
 
     <!-- AI Parse Dialog -->
-    <el-dialog v-model="showAIParseDialog" title="AI智能解析" width="600px">
-      <el-form>
-        <el-form-item label="要解析的文本">
-          <el-input 
-            v-model="quickTextInput" 
-            type="textarea" 
-            :rows="8"
-            placeholder="粘贴要解析的文本，AI将自动识别并创建任务..."
-          />
-        </el-form-item>
-      </el-form>
-      
-      <template #footer>
-        <el-button @click="showAIParseDialog = false">取消</el-button>
-        <el-button type="primary" @click="parseQuickTextInput" :loading="taskStore.loading">
-          解析任务
-        </el-button>
-      </template>
-    </el-dialog>
+    <AIParseDialog v-model="showAIParseDialog" />
     
     <!-- AI Assistant Dialog -->
-    <el-dialog v-model="showAIAssistantDialog" title="AI助手" width="500px">
-      <el-form label-position="top">
-        <el-form-item label="选择功能">
-          <el-select v-model="aiAssistantAction" placeholder="选择AI功能" style="width: 100%;">
-            <el-option label="重写文本" value="rewrite" />
-            <el-option label="添加表情" value="add-emoji" />
-            <el-option label="总结内容" value="summarize" />
-            <el-option label="创建子任务" value="make-subtasks" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="输入内容">
-          <el-input 
-            v-model="aiAssistantContent" 
-            type="textarea" 
-            :rows="4"
-            placeholder="输入需要处理的文本..."
-          />
-        </el-form-item>
-        <el-form-item label="上下文（可选）">
-          <el-input 
-            v-model="aiAssistantContext" 
-            type="textarea" 
-            :rows="2"
-            placeholder="提供额外的上下文信息..."
-          />
-        </el-form-item>
-        <el-form-item v-if="aiAssistantResult" label="结果">
-          <el-input 
-            v-model="aiAssistantResult" 
-            type="textarea" 
-            :rows="6"
-            readonly
-          />
-        </el-form-item>
-      </el-form>
-      
-      <template #footer>
-        <el-button @click="showAIAssistantDialog = false">关闭</el-button>
-        <el-button 
-          type="primary" 
-          @click="executeAIAssistantDialog" 
-          :loading="taskStore.loading"
-          :disabled="!aiAssistantAction || !aiAssistantContent"
-        >
-          执行AI功能
-        </el-button>
-        <el-button 
-          v-if="aiAssistantResult" 
-          @click="copyAIResult" 
-          type="success"
-        >
-          复制结果
-        </el-button>
-      </template>
-    </el-dialog>
+    <AIAssistantDialog v-model="showAIAssistantDialog" />
     
     <!-- Workload Analysis Dialog -->
-    <el-dialog v-model="showWorkloadDialog" title="工作量分析" width="600px">
-      <div v-if="workloadAnalysis" class="workload-analysis">
-        <div class="workload-summary">
-          <div class="summary-item">
-            <span class="label">总工时:</span>
-            <span class="value">{{ workloadAnalysis.total_hours }}小时</span>
-          </div>
-          <div class="summary-item">
-            <span class="label">日容量:</span>
-            <span class="value">{{ workloadAnalysis.capacity_hours }}小时</span>
-          </div>
-          <div class="summary-item">
-            <span class="label">负载率:</span>
-            <span class="value" :class="getWorkloadColor(workloadAnalysis.workload_percentage)">
-              {{ Math.round(workloadAnalysis.workload_percentage) }}%
-            </span>
-          </div>
-        </div>
-        
-        <el-alert 
-          :title="getWorkloadMessage(workloadAnalysis.conflict_level)"
-          :type="getWorkloadAlertType(workloadAnalysis.conflict_level)"
-          :closable="false"
-          style="margin: 16px 0;"
-        />
-        
-        <div v-if="workloadAnalysis.tasks && workloadAnalysis.tasks.length > 0" class="task-breakdown">
-          <h4>任务分解:</h4>
-          <div class="task-list">
-            <div 
-              v-for="task in workloadAnalysis.tasks" 
-              :key="task.id"
-              class="task-item"
-            >
-              <span class="task-title">{{ task.title }}</span>
-              <span class="task-hours">{{ task.estimated_hours }}小时</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <template #footer>
-        <el-button @click="showWorkloadDialog = false">关闭</el-button>
-        <el-button @click="refreshWorkloadAnalysis" :loading="taskStore.loading">
-          刷新分析
-        </el-button>
-      </template>
-    </el-dialog>
+    <WorkloadDialog v-model="showWorkloadDialog" />
     
-    <!-- Quick Text Dialog -->
-    <el-dialog v-model="showQuickTextDialog" title="快速文本解析" width="500px">
-      <el-form label-position="top">
-        <el-form-item label="文本内容">
-          <el-input 
-            v-model="quickTextInput" 
-            type="textarea" 
-            :rows="6"
-            placeholder="粘贴文本内容，AI将自动解析为任务..."
-            @keydown.ctrl.enter="parseQuickTextInput"
-            @keydown.meta.enter="parseQuickTextInput"
-          />
-        </el-form-item>
-      </el-form>
-      
-      <template #footer>
-        <el-button @click="showQuickTextDialog = false">取消</el-button>
-        <el-button 
-          type="primary" 
-          @click="parseQuickTextInput" 
-          :loading="taskStore.loading"
-          :disabled="!quickTextInput.trim()"
-        >
-          AI解析任务
-        </el-button>
-      </template>
-    </el-dialog>
 
-    <!-- Enhanced Export Dialog -->
-    <el-dialog v-model="showExportDialog" title="导出数据" width="600px">
-      <el-form label-position="top">
-        <el-form-item label="导出格式">
-          <el-select v-model="exportFormat" style="width: 100%;">
-            <el-option label="JSON - 结构化数据" value="json" />
-            <el-option label="Markdown - 文档格式" value="markdown" />
-            <el-option label="CSV - 表格数据" value="csv" />
-            <el-option label="Excel - 电子表格" value="excel" />
-            <el-option label="PDF - 报告文档" value="pdf" />
-          </el-select>
-        </el-form-item>
-        
-        <el-form-item label="筛选条件">
-          <div class="export-filters">
-            <el-select 
-              v-model="exportFilterModule" 
-              placeholder="按模块筛选（可选）"
-              clearable
-              style="width: 48%;"
-            >
-              <el-option
-                v-for="module in taskStore.modules"
-                :key="module.id"
-                :label="module.name"
-                :value="module.id"
-              />
-            </el-select>
-            
-            <el-select 
-              v-model="exportFilterPriority" 
-              placeholder="按优先级筛选（可选）"
-              clearable
-              style="width: 48%;"
-            >
-              <el-option label="P0 - 紧急" :value="0" />
-              <el-option label="P1 - 高" :value="1" />
-              <el-option label="P2 - 中" :value="2" />
-              <el-option label="P3 - 低" :value="3" />
-              <el-option label="P4 - 待办" :value="4" />
-            </el-select>
-          </div>
-        </el-form-item>
-        
-        <el-form-item label="包含内容">
-          <div class="export-content-options">
-            <el-checkbox v-model="exportOptions.includeHistory">
-              历史记录
-            </el-checkbox>
-            <el-checkbox v-model="exportOptions.includeDependencies">
-              任务依赖关系
-            </el-checkbox>
-            <el-checkbox v-model="exportOptions.includeModules">
-              模块信息
-            </el-checkbox>
-          </div>
-        </el-form-item>
-        
-        <el-form-item label="预览信息">
-          <div class="export-preview">
-            <div class="preview-item">
-              <span class="preview-label">将导出任务数:</span>
-              <span class="preview-value">{{ getFilteredTaskCount() }}</span>
-            </div>
-            <div class="preview-item">
-              <span class="preview-label">预计文件大小:</span>
-              <span class="preview-value">{{ getEstimatedFileSize() }}</span>
-            </div>
-          </div>
-        </el-form-item>
-      </el-form>
-      
-      <template #footer>
-        <el-button @click="showExportDialog = false">取消</el-button>
-        <el-button type="primary" @click="executeExport" :loading="taskStore.loading">
-          导出文件
-        </el-button>
-      </template>
-    </el-dialog>
+
+    <!-- Export Dialog -->
+    <ExportDialog
+      v-model="showExportDialog"
+      :modules="taskStore.modules"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { ElButton, ElInput, ElUpload, ElDialog, ElForm, ElFormItem, ElSelect, ElOption, ElTag, ElIcon, ElColorPicker, ElMessage, ElMessageBox, ElTabs, ElTabPane, ElRadioGroup, ElRadio, ElCheckbox, ElInputNumber, ElDropdown, ElDropdownMenu, ElDropdownItem, ElAlert } from 'element-plus'
-import { Download, Setting, UploadFilled, Search, Menu, Grid, CollectionTag, Plus, Rank, Close, Lightning, MagicStick, Picture, Inbox, Check, CircleCheck, FolderOpened, Edit, Delete, ArrowDown } from '@element-plus/icons-vue'
+import { Download, Setting, UploadFilled, Search, Menu, Grid, CollectionTag, Plus, Rank, Close, Lightning, MagicStick, Picture, Box, Check, CircleCheck, FolderOpened, Edit, Delete, ArrowDown } from '@element-plus/icons-vue'
 import StickyCanvas from '@/components/StickyCanvas.vue'
 import TaskDetailsPopup from '@/components/TaskDetailsPopup.vue'
 import DebugTaskList from '@/components/DebugTaskList.vue'
@@ -937,12 +165,34 @@ import WorkloadSidebar from '@/components/WorkloadSidebar.vue'
 import SimilarTaskDialog from '@/components/SimilarTaskDialog.vue'
 import RiskRadar from '@/components/RiskRadar.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
+import TimelineView from '@/components/TimelineView.vue'
+import InsightDrawer from '@/components/InsightDrawer.vue'
+import ContextToolbar from '@/components/ContextToolbar.vue'
+import QuickAddDialog from '@/components/dialogs/QuickAddDialog.vue'
+import NewModuleDialog from '@/components/dialogs/NewModuleDialog.vue'
+import AutoArrangeDialog from '@/components/dialogs/AutoArrangeDialog.vue'
+import BackupDialog from '@/components/dialogs/BackupDialog.vue'
+import ExportDialog from '@/components/dialogs/ExportDialog.vue'
+import SettingsDialog from '@/components/dialogs/SettingsDialog.vue'
+import AIParseDialog from '@/components/dialogs/AIParseDialog.vue'
+import AIAssistantDialog from '@/components/dialogs/AIAssistantDialog.vue'
+import WorkloadDialog from '@/components/dialogs/WorkloadDialog.vue'
 import { useTaskStore, type Task } from '@/stores/tasks'
 import { useSettingsStore } from '@/stores/settings'
 import { useKeyboard } from '@/composables/useKeyboard'
+import { useDialogs } from '@/composables/dialogs/useDialogs'
+import { useTaskOperations } from '@/composables/useTaskOperations'
+import { useAIAnalysis } from '@/composables/useAIAnalysis'
+import { useDataManagement } from '@/composables/useDataManagement'
+import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 
 const taskStore = useTaskStore()
 const settingsStore = useSettingsStore()
+
+// Composables
+const taskOps = useTaskOperations()
+const aiAnalysis = useAIAnalysis()
+const dataManagement = useDataManagement()
 
 // State
 const selectedTask = ref<Task | null>(null)
@@ -959,8 +209,6 @@ const searchQuery = ref('')
 const searchResults = ref<Task[]>([])
 const searchInput = ref()
 const showSimilarTasksDialog = ref(false)
-const similarTasksData = ref<any>(null)
-const pendingTask = ref<Partial<Task> | null>(null)
 const islandViewEnabled = ref(false)
 const themeIslands = ref<any[]>([])
 const islandViewLoading = ref(false)
@@ -972,52 +220,16 @@ const aiAssistantAction = ref('')
 const aiAssistantContent = ref('')
 const aiAssistantContext = ref('')
 const aiAssistantResult = ref('')
-const workloadAnalysis = ref<any>(null)
 
 // Modern UI State
-const fabExpanded = ref(false)
 const showContextToolbar = ref(false)
 const contextToolbarPosition = ref({ top: '0px', left: '0px' })
 const showAlignOptions = ref(false)
+const timelineFilter = ref('all') // all, pending, completed
+const selectedTasks = ref<number[]>([])
 const insightDrawerOpen = ref(false)
-const activeInsightTab = ref('workload')
 const currentView = ref('canvas') // canvas, timeline, island
 const showRiskRadar = ref(false)
-
-// Timeline View State
-const timelineFilter = ref('all') // all, pending, completed
-
-// FAB Actions Configuration
-const fabActions = ref([
-  {
-    key: 'add-task',
-    icon: '📝',
-    label: '添加任务',
-    title: '快速添加任务',
-    action: () => showQuickAdd.value = true
-  },
-  {
-    key: 'upload-image',
-    icon: '📷',
-    label: '上传图片',
-    title: '上传图片进行OCR识别',
-    action: () => triggerImageUpload()
-  },
-  {
-    key: 'quick-note',
-    icon: '✏️',
-    label: '快速笔记',
-    title: '快速文本输入',
-    action: () => showQuickTextDialog.value = true
-  },
-  {
-    key: 'settings',
-    icon: '⚙️',
-    label: '设置',
-    title: '应用设置',
-    action: () => showSettings.value = true
-  }
-])
 const showBackupDialog = ref(false)
 const showQuickTextDialog = ref(false)
 const quickTextInput = ref('')
@@ -1025,8 +237,7 @@ const showExportDialog = ref(false)
 const exportFormat = ref('json')
 const exportFilterModule = ref<number | null>(null)
 const exportFilterPriority = ref<number | null>(null)
-const backupStatus = ref('')
-const backupHistory = ref<any[]>([])
+
 
 // AI Features settings
 const aiFeatures = ref({
@@ -1055,17 +266,8 @@ const advancedSettings = ref({
   enableBetaFeatures: false
 })
 
-const newTask = ref({
-  title: '',
-  description: '',
-  urgency: 2,
-  module_id: undefined
-})
-
-const newModule = ref({
-  name: '',
-  color: '#FFE58F'
-})
+// 使用 dialogs composable
+const dialogs = useDialogs()
 
 const showAutoArrangeDialog = ref(false)
 
@@ -1075,6 +277,24 @@ function handleQuickTextKeydown(event: KeyboardEvent) {
     event.preventDefault()
     parseQuickText()
   }
+}
+
+
+function openSettings() {
+  showSettings.value = true
+}
+
+function openGlobalSearch() {
+  // 由于搜索功能已经集成到InsightDrawer中，这里不需要额外操作
+  console.log('Search opened from top button')
+}
+
+function openQuickAdd() {
+  showQuickAdd.value = true
+}
+
+function openAIAssistant() {
+  showAIAssistantDialog.value = true
 }
 
 
@@ -1133,8 +353,8 @@ async function checkSimilarTasksBeforeCreate(task: Partial<Task>) {
       if (result.similar_tasks.length > 0) {
         // Show similar tasks dialog
         showSimilarTasksDialog.value = true
-        similarTasksData.value = result
-        pendingTask.value = task
+        taskOps.similarTasksData.value = result
+        taskOps.pendingTask.value = task
         return
       }
     }
@@ -1177,45 +397,44 @@ async function createAllFromInbox() {
   }
 }
 
-async function createQuickTask() {
+// 处理快速添加任务创建
+async function handleQuickTaskCreated(taskData: any) {
   try {
     // Check for similar tasks before creating
-    await checkSimilarTasksBeforeCreate(newTask.value)
-    newTask.value = {
-      title: '',
-      description: '',
-      urgency: 2,
-      module_id: undefined
-    }
-    showQuickAdd.value = false
+    await checkSimilarTasksBeforeCreate(taskData)
   } catch (error) {
     ElMessage.error('Failed to create task')
   }
 }
 
+// 处理模块创建
+function handleModuleCreated(moduleData: { name: string; color: string }) {
+  ElMessage.success('模块创建成功')
+}
+
 // Similar tasks dialog handlers
 function handleSimilarTasksCancel() {
   showSimilarTasksDialog.value = false
-  pendingTask.value = null
-  similarTasksData.value = null
+  taskOps.pendingTask.value = null
+  taskOps.similarTasksData.value = null
 }
 
 function handleSimilarTasksIgnore() {
   showSimilarTasksDialog.value = false
-  if (pendingTask.value) {
-    finalizeTaskCreation(pendingTask.value)
+  if (taskOps.pendingTask.value) {
+    finalizeTaskCreation(taskOps.pendingTask.value)
   }
-  pendingTask.value = null
-  similarTasksData.value = null
+  taskOps.pendingTask.value = null
+  taskOps.similarTasksData.value = null
 }
 
 function handleSimilarTasksCreate() {
   showSimilarTasksDialog.value = false
-  if (pendingTask.value) {
-    finalizeTaskCreation(pendingTask.value)
+  if (taskOps.pendingTask.value) {
+    finalizeTaskCreation(taskOps.pendingTask.value)
   }
-  pendingTask.value = null
-  similarTasksData.value = null
+  taskOps.pendingTask.value = null
+  taskOps.similarTasksData.value = null
 }
 
 function handleViewSimilarTask(task: any) {
@@ -1231,21 +450,25 @@ function handleViewSimilarTask(task: any) {
 
 async function handleLinkSimilarTask(task: any) {
   // Create dependency relationship with the similar task
-  if (pendingTask.value) {
+  if (taskOps.pendingTask.value) {
     try {
       // First create the new task
-      const newTaskCreated = await taskStore.createTask(pendingTask.value)
+      const newTaskCreated = await taskStore.createTask(taskOps.pendingTask.value)
       
       // Then create dependency
-      await taskStore.createDependency(task.id, newTaskCreated.id)
+      await taskStore.createDependency({
+        from_task_id: task.id,
+        to_task_id: newTaskCreated.id,
+        dependency_type: 'relates'
+      })
       
       showSimilarTasksDialog.value = false
-      pendingTask.value = null
-      similarTasksData.value = null
+      taskOps.pendingTask.value = null
+      taskOps.similarTasksData.value = null
       
       // Remove from inbox if it was from inbox
-      if (taskInbox.value.includes(pendingTask.value)) {
-        const index = taskInbox.value.indexOf(pendingTask.value)
+      if (taskInbox.value.includes(taskOps.pendingTask.value)) {
+        const index = taskInbox.value.indexOf(taskOps.pendingTask.value)
         if (index > -1) {
           taskInbox.value.splice(index, 1)
         }
@@ -1280,19 +503,7 @@ function handleViewRiskyTask(task: any) {
   }
 }
 
-async function createModule() {
-  try {
-    await taskStore.createModule(newModule.value)
-    newModule.value = {
-      name: '',
-      color: '#FFE58F'
-    }
-    showNewModule.value = false
-    ElMessage.success('模块已创建')
-  } catch (error) {
-    ElMessage.error('模块创建失败')
-  }
-}
+
 
 async function saveSettings() {
   try {
@@ -1397,8 +608,8 @@ function handleSearch(query: string) {
 
   const lowerQuery = query.toLowerCase()
   searchResults.value = taskStore.tasks.filter(task => 
-    task.title.toLowerCase().includes(lowerQuery) ||
-    task.description.toLowerCase().includes(lowerQuery)
+    task.title?.toLowerCase().includes(lowerQuery) ||
+    task.description?.toLowerCase().includes(lowerQuery)
   )
 }
 
@@ -1464,13 +675,30 @@ function handleCommandPaletteExecuteCommand(command: any) {
       showSettings.value = true
       break
     case 'toggleIsland':
-      toggleIslandView()
+      currentView.value = 'island'
+      if (!islandViewEnabled.value) {
+        toggleIslandView()
+      }
       break
     case 'canvasView':
       currentView.value = 'canvas'
+      if (islandViewEnabled.value) {
+        islandViewEnabled.value = false
+        themeIslands.value = []
+        if (stickyCanvasRef.value) {
+          stickyCanvasRef.value.exitIslandView()
+        }
+      }
       break
     case 'timelineView':
       currentView.value = 'timeline'
+      if (islandViewEnabled.value) {
+        islandViewEnabled.value = false
+        themeIslands.value = []
+        if (stickyCanvasRef.value) {
+          stickyCanvasRef.value.exitIslandView()
+        }
+      }
       break
     case 'weeklyReport':
       generateWeeklyReport()
@@ -1687,70 +915,7 @@ async function executeExport() {
 }
 
 // Backup management functions
-async function createManualBackup() {
-  try {
-    backupStatus.value = '正在创建备份...'
-    const response = await fetch('/api/backup/manual', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-    
-    const result = await response.json()
-    
-    if (result.success) {
-      backupStatus.value = `备份创建成功: ${result.filename}`
-      ElMessage.success('手动备份创建成功！')
-      // Refresh backup history
-      await loadBackupHistory()
-    } else {
-      throw new Error(result.error || 'Backup failed')
-    }
-  } catch (error) {
-    console.error('Manual backup failed:', error)
-    backupStatus.value = '备份创建失败'
-    ElMessage.error('手动备份创建失败')
-  }
-}
 
-async function loadBackupHistory() {
-  try {
-    const response = await fetch('/api/backup/list')
-    const result = await response.json()
-    
-    if (result.success) {
-      backupHistory.value = result.backups || []
-    } else {
-      throw new Error(result.error || 'Failed to load backup history')
-    }
-  } catch (error) {
-    console.error('Failed to load backup history:', error)
-    ElMessage.error('加载备份历史失败')
-  }
-}
-
-async function downloadBackup(filename: string) {
-  try {
-    const response = await fetch(`/api/backup/download/${filename}`)
-    if (!response.ok) {
-      throw new Error('Download failed')
-    }
-    
-    const blob = await response.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.click()
-    URL.revokeObjectURL(url)
-    
-    ElMessage.success('备份下载成功')
-  } catch (error) {
-    console.error('Backup download failed:', error)
-    ElMessage.error('备份下载失败')
-  }
-}
 
 // Setup keyboard shortcuts
 useKeyboard([
@@ -1817,9 +982,6 @@ onMounted(async () => {
     await taskStore.createModule({ name: '通用', color: '#FFE58F' })
   }
   
-  // Load backup history on startup
-  await loadBackupHistory()
-  
   console.log('Home: All data loaded, final tasks count:', taskStore.tasks.length)
   
   // Load initial workload analysis
@@ -1829,27 +991,6 @@ onMounted(async () => {
   setupKeyboardShortcuts()
 })
 
-// Modern UI Functions
-function toggleFab() {
-  fabExpanded.value = !fabExpanded.value
-}
-
-function executeFabAction(action: any) {
-  action.action()
-  fabExpanded.value = false
-}
-
-function getFabSubPosition(index: number) {
-  const angle = (index * 45) - 90 // Start from top and spread in 45° increments
-  const radius = 80
-  const x = Math.cos(angle * Math.PI / 180) * radius
-  const y = Math.sin(angle * Math.PI / 180) * radius
-  
-  return {
-    transform: `translate(${x}px, ${y}px)`,
-    transitionDelay: `${index * 50}ms`
-  }
-}
 
 function triggerImageUpload() {
   // Create a hidden file input
@@ -1875,13 +1016,30 @@ function switchView() {
   // Execute view switching logic
   switch (currentView.value) {
     case 'canvas':
-      // Default canvas view
+      // Default canvas view - exit island view if needed
+      if (islandViewEnabled.value) {
+        islandViewEnabled.value = false
+        themeIslands.value = []
+        if (stickyCanvasRef.value) {
+          stickyCanvasRef.value.exitIslandView()
+        }
+      }
       break
     case 'timeline':
-      // Timeline view is now implemented
+      // Timeline view is now implemented - exit island view if needed
+      if (islandViewEnabled.value) {
+        islandViewEnabled.value = false
+        themeIslands.value = []
+        if (stickyCanvasRef.value) {
+          stickyCanvasRef.value.exitIslandView()
+        }
+      }
       break
     case 'island':
-      toggleIslandView()
+      // Switch to island view
+      if (!islandViewEnabled.value) {
+        toggleIslandView()
+      }
       break
   }
 }
@@ -1904,28 +1062,19 @@ function getViewSwitcherTitle() {
   }
 }
 
-// Timeline View Functions
-const filteredTimelineTasks = computed(() => {
-  let tasks = [...taskStore.tasks].sort((a, b) => {
-    const dateA = new Date(a.updated_at || a.created_at || 0).getTime()
-    const dateB = new Date(b.updated_at || b.created_at || 0).getTime()
-    return dateB - dateA // 最新的在上面
-  })
+// Workload Data
+const workloadData = computed(() => {
+  if (!aiAnalysis.workloadAnalysis.value) return null
   
-  if (timelineFilter.value !== 'all') {
-    tasks = tasks.filter(task => {
-      switch (timelineFilter.value) {
-        case 'pending':
-          return !task.status || task.status === 'pending' || task.status === 'in_progress'
-        case 'completed':
-          return task.status === 'completed'
-        default:
-          return true
-      }
-    })
+  const percentage = aiAnalysis.workloadAnalysis.value?.workload_percentage
+  const hours = aiAnalysis.workloadAnalysis.value?.total_hours
+  
+  return {
+    totalHours: typeof hours === 'number' && isFinite(hours) ? Math.round(hours * 10) / 10 : 0,
+    workloadPercentage: typeof percentage === 'number' && isFinite(percentage) ? Math.round(percentage) : 0,
+    tasksCount: aiAnalysis.workloadAnalysis.value?.tasks_count || 0,
+    analysisDate: aiAnalysis.workloadAnalysis.value?.analysis_date || new Date().toISOString().split('T')[0]
   }
-  
-  return tasks
 })
 
 function getTimelineEmptyMessage() {
@@ -2179,9 +1328,27 @@ function setupKeyboardShortcuts() {
       currentView.value = views[parseInt(e.key) - 1]
     }
     
+    // Global Quick Delete - 只有在明确的删除模式下才启用
+    // Shift + Delete 进入删除模式
+    if (e.shiftKey && e.key === 'Delete' && selectedTask.value) {
+      const target = e.target as HTMLElement
+      if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && !target.contentEditable) {
+        e.preventDefault()
+        quickDeleteSelectedTask()
+      }
+    }
+    
+    // Global Undo - Ctrl/Cmd + Z 撤回删除
+    if ((e.metaKey || e.ctrlKey) && e.key === 'z' && taskStore.canUndo()) {
+      const target = e.target as HTMLElement
+      if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && !target.contentEditable) {
+        e.preventDefault()
+        handleUndoDelete()
+      }
+    }
+    
     // ESC to close things
     if (e.key === 'Escape') {
-      fabExpanded.value = false
       showAlignOptions.value = false
       showCommandPalette.value = false
     }
@@ -2255,7 +1422,7 @@ async function showWorkloadAnalysis() {
 
 async function refreshWorkloadAnalysis() {
   try {
-    const response = await fetch('/api/ai/workload-analysis', {
+          const response = await fetch('/api/ai/v3/workload/analyze', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -2265,22 +1432,32 @@ async function refreshWorkloadAnalysis() {
       })
     })
     
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    
     const result = await response.json()
     
     if (result.success) {
-      workloadAnalysis.value = result
+      // Use the aiAnalysis composable for workload analysis
+      await aiAnalysis.refreshWorkloadAnalysis()
     } else {
       throw new Error(result.error || 'Workload analysis failed')
     }
   } catch (error) {
     console.error('Workload analysis failed:', error)
-    ElMessage.error('工作量分析失败')
+    // 提供默认的工作负载数据，避免显示错误
+    // 使用aiAnalysis composable管理工作负载数据
+    // aiAnalysis会自动处理错误状态
+    ElMessage.error('工作量分析失败，显示默认数据')
   }
 }
 
 function getWorkloadColor(percentage: number): string {
-  if (percentage <= 70) return 'workload-green'
-  if (percentage <= 90) return 'workload-yellow'
+  // 确保percentage是有效数字
+  const safePercentage = typeof percentage === 'number' && isFinite(percentage) ? percentage : 0
+  if (safePercentage <= 70) return 'workload-green'
+  if (safePercentage <= 90) return 'workload-yellow'
   return 'workload-red'
 }
 
@@ -2354,11 +1531,19 @@ async function generateSubtasksForSelected() {
       // Create dependencies: parent -> first subtask, and chain subtasks
       if (createdSubtasks.length > 0) {
         // Parent depends on first subtask
-        await taskStore.createDependency(selectedTask.value.id, createdSubtasks[0].id)
+        await taskStore.createDependency({
+          from_task_id: selectedTask.value.id,
+          to_task_id: createdSubtasks[0].id,
+          dependency_type: 'subtask'
+        })
         
         // Chain subtasks (each depends on the previous one)
         for (let i = 1; i < createdSubtasks.length; i++) {
-          await taskStore.createDependency(createdSubtasks[i - 1].id, createdSubtasks[i].id)
+          await taskStore.createDependency({
+            from_task_id: createdSubtasks[i - 1].id,
+            to_task_id: createdSubtasks[i].id,
+            dependency_type: 'subtask'
+          })
         }
       }
       
@@ -2398,6 +1583,60 @@ async function deleteSelectedTask() {
       }
     }
   }
+}
+
+// 快捷删除选中任务 - 无确认
+async function quickDeleteSelectedTask() {
+  if (selectedTask.value) {
+    try {
+      console.log('Quick deleting task:', selectedTask.value.id)
+      await taskStore.deleteTask(selectedTask.value.id)
+      handleTaskSelect(null)
+      showUndoDeleteMessage()
+    } catch (error) {
+      console.error('Failed to delete task:', error)
+      ElMessage.error('删除任务失败')
+    }
+  }
+}
+
+// 显示撤回删除消息
+function showUndoDeleteMessage() {
+  ElMessage({
+    type: 'success',
+    duration: 5000,
+    showClose: true,
+    dangerouslyUseHTMLString: true,
+    message: `
+      <div style="display: flex; align-items: center; justify-content: space-between; width: 200px;">
+        <span>任务已删除</span>
+        <button 
+          onclick="window.handleUndoDelete()"
+          style="margin-left: 12px; padding: 4px 8px; background: #409EFF; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;"
+        >
+          撤回 (Ctrl+Z)
+        </button>
+      </div>
+    `
+  })
+}
+
+// 处理撤回删除
+async function handleUndoDelete() {
+  try {
+    const recreatedTask = await taskStore.undoDeleteTask()
+    ElMessage.success(`任务 "${recreatedTask.title}" 已恢复`)
+    // 选中恢复的任务
+    handleTaskSelect(recreatedTask)
+  } catch (error) {
+    console.error('Failed to undo delete:', error)
+    ElMessage.error('撤回失败')
+  }
+}
+
+// 将撤回函数暴露到全局，供消息中的按钮调用
+if (typeof window !== 'undefined') {
+  (window as any).handleUndoDelete = handleUndoDelete
 }
 
 function getPriorityName(urgency: number): string {
@@ -3408,114 +2647,6 @@ function getEstimatedFileSize(): string {
   font-weight: var(--font-weight-medium);
 }
 
-/* Floating Action Buttons */
-.fab-container {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 1002;
-}
-
-.fab-main {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--primary);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  user-select: none;
-  position: relative;
-  z-index: 1003;
-}
-
-.fab-main:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
-}
-
-.fab-main.fab-expanded {
-  transform: rotate(45deg);
-}
-
-.fab-icon {
-  color: white;
-  font-size: 24px;
-  font-weight: 300;
-  transition: all 0.2s ease;
-}
-
-.fab-sub-container {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 56px;
-  height: 56px;
-}
-
-.fab-sub {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-default);
-  box-shadow: var(--shadow-md);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  transform-origin: center;
-  z-index: 1002;
-}
-
-.fab-sub:hover {
-  transform: scale(1.1);
-  background: var(--bg-elevated);
-}
-
-.fab-sub-icon {
-  font-size: 16px;
-  margin-bottom: 2px;
-}
-
-.fab-sub-label {
-  font-size: 8px;
-  color: var(--text-muted);
-  text-align: center;
-  white-space: nowrap;
-}
-
-/* View Switcher FAB */
-.fab-view-switcher {
-  position: fixed;
-  bottom: 96px;
-  right: 24px;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-default);
-  box-shadow: var(--shadow-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  z-index: 1001;
-}
-
-.fab-view-switcher:hover {
-  transform: scale(1.05);
-  background: var(--bg-elevated);
-}
 
 /* Context Toolbar */
 .context-toolbar {
@@ -3731,40 +2862,14 @@ function getEstimatedFileSize(): string {
   cursor: pointer;
 }
 
-/* FAB Transitions */
-.fab-sub-enter-active,
-.fab-sub-leave-active {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.fab-sub-enter-from,
-.fab-sub-leave-to {
-  opacity: 0;
-  transform: scale(0.8);
-}
-
 /* Responsive Design */
 @media (max-width: 1280px) {
-  .fab-container {
-    bottom: 16px;
-    right: 16px;
-  }
-  
   .insight-drawer.drawer-open {
     width: 80vw;
   }
 }
 
 @media (max-width: 768px) {
-  .fab-main {
-    width: 48px;
-    height: 48px;
-  }
-  
-  .fab-sub {
-    width: 40px;
-    height: 40px;
-  }
   
   .insight-drawer {
     width: 100vw;

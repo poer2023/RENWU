@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>中键拖动测试页面</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+        .test-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .status {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-family: monospace;
+        }
+        .iframe-container {
+            border: 2px solid #666;
+            border-radius: 8px;
+            overflow: hidden;
+            height: 600px;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .instructions {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-info">
+        <h2>🧪 TaskWall 中键拖动功能测试</h2>
+        <p><strong>测试目标:</strong> 验证修复后的鼠标中键拖动画布功能</p>
+        <p><strong>预期行为:</strong> 按住鼠标中键可以流畅拖动画布，控制台显示详细日志</p>
+    </div>
+    
+    <div class="status" id="status">
+        📊 正在加载TaskWall应用...
+    </div>
+    
+    <div class="instructions">
+        <h3>📋 测试步骤:</h3>
+        <ol>
+            <li>等待下方应用完全加载</li>
+            <li>按 F12 打开开发者工具，切换到 Console 标签</li>
+            <li>在画布空白区域按住鼠标中键（滚轮按下）</li>
+            <li>拖动鼠标，观察画布是否移动</li>
+            <li>查看控制台是否显示相关日志</li>
+        </ol>
+        
+        <h3>🔍 期望的控制台日志:</h3>
+        <pre>🎯 画布鼠标按下事件: 1
+🚀 开始中键画布拖动 - 立即阻止默认行为
+📞 调用 panZoom.startPan
+🎯 startUltraPan 函数被调用, 按键: 1
+📊 画布拖动: FPS=xxx, 处理时间=xxx, 位移=(xx, xx)
+🛑 超级画布拖动结束</pre>
+    </div>
+    
+    <div class="iframe-container">
+        <iframe src="http://localhost:3000" id="app-frame"></iframe>
+    </div>
+    
+    <script>
+        const statusEl = document.getElementById('status');
+        const frameEl = document.getElementById('app-frame');
+        
+        // 监听iframe加载
+        frameEl.onload = function() {
+            statusEl.innerHTML = '✅ TaskWall应用已加载完成，可以开始测试中键拖动功能';
+            statusEl.style.background = '#d4edda';
+        };
+        
+        frameEl.onerror = function() {
+            statusEl.innerHTML = '❌ 加载失败，请确保前端服务正在运行 (http://localhost:3000)';
+            statusEl.style.background = '#f8d7da';
+        };
+        
+        // 超时检查
+        setTimeout(() => {
+            if (statusEl.innerHTML.includes('正在加载')) {
+                statusEl.innerHTML = '⚠️ 加载超时，请检查前端服务是否正常运行';
+                statusEl.style.background = '#fff3cd';
+            }
+        }, 10000);
+    </script>
+</body>
+</html>

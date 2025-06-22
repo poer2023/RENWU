@@ -45,9 +45,32 @@ class TaskCRUD:
 
     @staticmethod
     def delete(db: Session, db_obj: Task) -> Task:
-        db.delete(db_obj)
-        db.commit()
-        return db_obj
+        try:
+            # 1. Delete task history records first
+            db.exec(
+                select(History).where(History.task_id == db_obj.id)
+            ).all()
+            for history in db.exec(select(History).where(History.task_id == db_obj.id)).all():
+                db.delete(history)
+            
+            # 2. Delete task dependencies (both incoming and outgoing)
+            for dep in db.exec(select(TaskDependency).where(TaskDependency.from_task_id == db_obj.id)).all():
+                db.delete(dep)
+            for dep in db.exec(select(TaskDependency).where(TaskDependency.to_task_id == db_obj.id)).all():
+                db.delete(dep)
+            
+            # 3. Update child tasks to remove parent reference
+            for child in db.exec(select(Task).where(Task.parent_id == db_obj.id)).all():
+                child.parent_id = None
+                db.add(child)
+            
+            # 4. Delete the task itself
+            db.delete(db_obj)
+            db.commit()
+            return db_obj
+        except Exception as e:
+            db.rollback()
+            raise e
 
 class ModuleCRUD:
     @staticmethod
@@ -132,7 +155,24 @@ class TaskDependencyCRUD:
         return db.exec(statement).all()
 
     @staticmethod
-    def delete(db: Session, from_task_id: int, to_task_id: int) -> bool:
+    def read_by_tasks(db: Session, from_task_id: int, to_task_id: int) -> Optional[TaskDependency]:
+        """Get dependency by specific task IDs"""
+        statement = select(TaskDependency).where(
+            TaskDependency.from_task_id == from_task_id,
+            TaskDependency.to_task_id == to_task_id
+        )
+        return db.exec(statement).first()
+
+    @staticmethod
+    def delete(db: Session, dependency: TaskDependency) -> bool:
+        """Delete a specific dependency object"""
+        db.delete(dependency)
+        db.commit()
+        return True
+
+    @staticmethod
+    def delete_by_tasks(db: Session, from_task_id: int, to_task_id: int) -> bool:
+        """Delete dependency by task IDs"""
         dependency = db.exec(
             select(TaskDependency).where(
                 TaskDependency.from_task_id == from_task_id,
