@@ -27,7 +27,7 @@ A modern, visual task management application featuring drag-and-drop sticky note
 
 ```bash
 # Clone and navigate to project
-git clone <repository> taskwall
+git clone https://github.com/poer2023/RENWU.git taskwall
 cd taskwall
 
 # Start the application
@@ -49,6 +49,113 @@ docker compose up -d --build
    - SQLite database is automatically created in `./data/taskwall.db`
    - Data persists between container restarts
 
+## Project Structure
+
+```
+RENWU/                              # 项目根目录
+├── README.md                       # 项目说明文档
+├── docker-compose.yml              # Docker编排配置
+├── start.sh                        # 开发环境启动脚本
+├── .gitignore                      # Git忽略文件配置
+│
+├── backend/                        # 后端服务 (FastAPI)
+│   ├── app/                        # 应用核心代码
+│   │   ├── main.py                 # FastAPI应用入口
+│   │   ├── models.py               # 数据库模型定义
+│   │   ├── schemas.py              # API请求/响应模型
+│   │   ├── crud.py                 # 数据库操作
+│   │   ├── deps.py                 # 依赖注入
+│   │   ├── ai/                     # AI服务模块
+│   │   │   ├── base.py             # AI服务基类
+│   │   │   ├── nlp_service.py      # 自然语言处理
+│   │   │   ├── similarity_service.py # 相似性检测
+│   │   │   ├── priority_service.py # 优先级分析
+│   │   │   └── workload_service.py # 工作量分析
+│   │   ├── routers/                # API路由模块
+│   │   │   ├── tasks.py            # 任务相关API
+│   │   │   ├── modules.py          # 模块管理API
+│   │   │   ├── ai_v3.py            # AI功能API
+│   │   │   └── dependencies.py     # 依赖关系API
+│   │   └── utils/                  # 工具模块
+│   │       ├── ai_client.py        # AI客户端
+│   │       ├── backup.py           # 备份工具
+│   │       └── ocr.py              # OCR处理
+│   ├── Dockerfile                  # 后端Docker配置
+│   └── requirements.txt            # Python依赖
+│
+├── frontend/                       # 前端应用 (Vue 3)
+│   ├── src/                        # 源代码目录
+│   │   ├── main.ts                 # Vue应用入口
+│   │   ├── App.vue                 # 根组件
+│   │   ├── components/             # Vue组件
+│   │   │   ├── TaskCard.vue        # 任务卡片组件
+│   │   │   ├── StickyCanvas.vue    # 拖拽画布组件
+│   │   │   ├── TaskConnections.vue # 任务连线组件
+│   │   │   ├── canvas/             # 画布相关组件
+│   │   │   ├── dialogs/            # 对话框组件
+│   │   │   └── task/               # 任务相关组件
+│   │   ├── composables/            # Vue组合式函数
+│   │   │   ├── useUnifiedDragSystem.ts # 统一拖拽系统
+│   │   │   ├── useTaskOperations.ts    # 任务操作
+│   │   │   ├── useAIAssistantV3.ts     # AI助手v3
+│   │   │   └── useConnections.ts       # 连线管理
+│   │   ├── pages/                  # 页面组件
+│   │   │   └── Home.vue            # 主页面
+│   │   ├── stores/                 # 状态管理 (Pinia)
+│   │   │   ├── tasks.ts            # 任务状态
+│   │   │   └── settings.ts         # 设置状态
+│   │   └── styles/                 # 样式文件
+│   │       ├── index.css           # 主样式
+│   │       ├── components.css      # 组件样式
+│   │       └── variables.css       # CSS变量
+│   ├── tests/                      # 前端测试 (Playwright)
+│   │   ├── 00-smoke-test.spec.ts   # 冒烟测试
+│   │   ├── 02-task-management.spec.ts # 任务管理测试
+│   │   └── 06-view-switching.spec.ts  # 视图切换测试
+│   ├── Dockerfile                  # 前端Docker配置
+│   ├── package.json                # 依赖和脚本配置
+│   ├── vite.config.ts              # Vite构建配置
+│   └── playwright.config.ts        # 测试配置
+│
+├── data/                           # 数据存储目录
+│   ├── taskwall.db                 # SQLite数据库
+│   └── backup/                     # 自动备份文件
+│
+├── docs/                           # 项目文档
+│   ├── PROJECT_DEVELOPMENT_GUIDE.md # 开发指南
+│   ├── REFACTORING_GUIDE.md        # 重构指南
+│   ├── MODULARIZATION_ANALYSIS.md  # 模块化分析
+│   ├── AI_SETUP_GUIDE.md           # AI配置指南
+│   ├── DEPLOYMENT.md               # 部署指南
+│   └── 技术实现文档.md              # 技术实现文档
+│
+├── scripts/                        # 脚本工具
+│   ├── build-production.sh         # 生产构建脚本
+│   ├── run-tests.sh                # 测试运行脚本
+│   └── verify-deployment.sh        # 部署验证脚本
+│
+├── testing/                        # 测试相关文件
+│   ├── test_ai_integration.py      # AI集成测试
+│   ├── test_connection_debug.html  # 连接调试测试
+│   ├── test_all_apis.html          # API综合测试
+│   └── debug_middle_click.html     # 中键点击调试
+│
+├── logs/                           # 日志文件
+│   ├── backend.log                 # 后端日志
+│   ├── frontend.log                # 前端日志
+│   └── startup.log                 # 启动日志
+│
+├── prd/                            # 产品需求文档
+│   ├── PRD-v3.0-Master.md          # 主需求文档
+│   ├── PRD-v3.0-AI-Features.md     # AI功能需求
+│   └── PRD-v3.0-Technical-Architecture.md # 技术架构
+│
+└── tests/                          # 集成测试
+    ├── test_current_api.py         # 当前API测试
+    ├── test_connections.html       # 连接功能测试
+    └── test_subtasks.py            # 子任务测试
+```
+
 ## Architecture
 
 ### Backend (FastAPI)
@@ -65,66 +172,30 @@ docker compose up -d --build
 - **Build Tool**: Vite for fast development and optimized builds
 - **Features**: Drag-and-drop canvas, real-time updates, responsive design
 
-### Key Components
-
-#### Backend Structure
-```
-backend/
-├── app/
-│   ├── main.py              # FastAPI application entry point
-│   ├── models.py            # SQLModel database models
-│   ├── schemas.py           # Pydantic request/response models
-│   ├── crud.py              # Database operations
-│   ├── deps.py              # Dependency injection
-│   └── utils/
-│       ├── ai_client.py     # Gemini AI integration
-│       └── ocr.py           # Tesseract OCR wrapper
-├── Dockerfile
-└── requirements.txt
-```
-
-#### Frontend Structure
-```
-frontend/
-├── src/
-│   ├── main.ts              # Vue application entry
-│   ├── App.vue              # Root component
-│   ├── components/
-│   │   ├── TaskCard.vue     # Individual task sticky note
-│   │   ├── StickyCanvas.vue # Drag-and-drop canvas
-│   │   └── RightDrawer.vue  # Task properties panel
-│   ├── pages/
-│   │   └── Home.vue         # Main application layout
-│   └── stores/
-│       └── tasks.ts         # Pinia state management
-├── Dockerfile
-├── package.json
-└── vite.config.ts
-```
-
 ## API Endpoints
 
 ### Tasks
-- `GET /tasks/` - List all tasks
-- `POST /tasks/` - Create new task
-- `GET /tasks/{id}` - Get specific task
-- `PATCH /tasks/{id}` - Update task
-- `DELETE /tasks/{id}` - Delete task
-- `GET /tasks/{id}/history` - Get task change history
+- `GET /api/tasks/` - List all tasks
+- `POST /api/tasks/` - Create new task
+- `GET /api/tasks/{id}` - Get specific task
+- `PATCH /api/tasks/{id}` - Update task
+- `DELETE /api/tasks/{id}` - Delete task
+- `GET /api/tasks/{id}/history` - Get task change history
 
 ### Modules
-- `GET /modules/` - List all modules
-- `POST /modules/` - Create new module
-- `DELETE /modules/{id}` - Delete module
+- `GET /api/modules/` - List all modules
+- `POST /api/modules/` - Create new module
+- `DELETE /api/modules/{id}` - Delete module
 
 ### AI & OCR
-- `POST /ai/parse` - Parse text into structured tasks
-- `POST /ocr/` - Extract text from uploaded images
+- `POST /api/ai/parse` - Parse text into structured tasks
+- `POST /api/ai/theme-islands` - Create theme islands
+- `POST /api/ocr/` - Extract text from uploaded images
 
 ### Health & Settings
 - `GET /health` - Health check endpoint
-- `GET /settings/` - List settings
-- `PUT /settings/{key}` - Update setting
+- `GET /api/settings/` - List settings
+- `PUT /api/settings/{key}` - Update setting
 
 ## Usage Guide
 
@@ -205,7 +276,7 @@ npm run dev
 - **后端API**: http://localhost:8765  
 - **API文档**: http://localhost:8765/docs
 
-> 📋 **端口配置详情**: 查看 [PORT_CONFIGURATION.md](PORT_CONFIGURATION.md) 了解完整的端口配置规范
+> 📋 **端口配置详情**: 查看 [docs/PORT_CONFIGURATION.md](docs/PORT_CONFIGURATION.md) 了解完整的端口配置规范
 
 ### ⚠️ 常见开发问题解决
 
@@ -261,12 +332,16 @@ kill -9 <PID>
 
 ```bash
 # Test API endpoints
-curl http://localhost:8000/health
+curl http://localhost:8765/health
 
 # Test task creation
-curl -X POST http://localhost:8000/tasks/ \
+curl -X POST http://localhost:8765/api/tasks/ \
   -H "Content-Type: application/json" \
   -d '{"title": "Test Task", "urgency": 2}'
+
+# Run frontend tests
+cd frontend
+npm test
 ```
 
 ## Deployment
@@ -325,6 +400,10 @@ docker compose logs -f api
 
 # Frontend logs only  
 docker compose logs -f web
+
+# Check development logs
+tail -f logs/backend.log
+tail -f logs/frontend.log
 ```
 
 ## Development Guidelines
@@ -344,6 +423,9 @@ For detailed development guidelines, including:
 - 🔧 [Refactoring Guide](docs/REFACTORING_GUIDE.md) - Component architecture and patterns
 - 📊 [Modularization Analysis](docs/MODULARIZATION_ANALYSIS.md) - Code structure analysis
 - 📈 [Modularization Completion Report](docs/MODULARIZATION_COMPLETION_REPORT.md) - Refactoring results
+- 🚀 [AI Setup Guide](docs/AI_SETUP_GUIDE.md) - AI功能配置指南
+- 📖 [Feature Test Guide](docs/FEATURE_TEST_GUIDE.md) - 功能测试指南
+- 🔧 [Port Configuration](docs/PORT_CONFIGURATION.md) - 端口配置说明
 
 ## Contributing
 
